@@ -31,3 +31,18 @@ Use `adding-a-feature` for functional parity and `frontend-design` for a user-fa
 Before building common workspace or agent UI, read `agent-native-toolkit`; for supported customization, read `customizing-agent-native`.
 
 - Guarded verification: run `pnpm agent-native:doctor`; fix findings before done.
+
+## ShiftAssist
+
+Staff rota app for small restaurants. The board is `/board`. The solver in `lib/solver/` is pure TypeScript; the model never places a shift.
+
+| Action | Use |
+| --- | --- |
+| `get-week` | Read the owner's week: staff ids, shift slot ids, who holds each, rules in plain English. Call first to turn names into ids. |
+| `move-shift` | `{ slotId, staffId, lock? }`. The only way to change who works a shift. Hard rules are re-checked on the server; a violation is refused with a plain reason and nothing is written. Repeating a move changes nothing. |
+| `load-sample-week` | Labelled SAMPLE restaurant. Refuses if the user already has a week unless `replace: true` (only when the user asks). |
+
+- Every assignment write goes through `server/lib/assignments.ts` (`moveShift`). Do not write the `shiftassist_*` tables any other way, and never with `db-exec`.
+- Every table has `owner_email`, set from the authenticated caller. Never take an owner from client input.
+- The board writes `navigation` (`view: "board"`) and a tab-scoped `selection` (`kind: "shift"`, `slotId`); `view-screen` returns the board snapshot and the selected shift.
+- Verify a write by calling `get-week` again, not from the tool result alone.
