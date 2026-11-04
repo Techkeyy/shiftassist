@@ -211,7 +211,7 @@ describe("realistic fixture", () => {
     for (const a of result.assignments) {
       const trace = result.traces[a.slotId];
       expect(trace.staffId).toBe(a.staffId);
-      const claimed = /Has (\d+) closes this week/.exec(trace.reasons.join(" "));
+      const claimed = /Has (\d+) closes? this week/.exec(trace.reasons.join(" "));
       expect(claimed).not.toBeNull();
       const recount = result.assignments.filter(
         (x) => x.staffId === a.staffId && isCloseShift(slotById.get(x.slotId)!),
@@ -407,7 +407,7 @@ describe("explainShift", () => {
     expect(trace.slotId).toBe("bar-1");
     expect(trace.staffId).toBe("ben");
     expect(trace.locked).toBe(false);
-    expect(trace.reasons).toContain("Has 1 shifts this week, the team average is 0.5.");
+    expect(trace.reasons).toContain("Has 1 shift this week, the team average is 0.5.");
     expect(trace.alternatives.find((a) => a.staffId === "ben")!.allowed).toBe(true);
     expect(JSON.stringify({ input, given })).toBe(before);
   });
