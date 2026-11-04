@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkAssignment, findCover, repairWeek, solveWeek } from "./index";
+import { checkAssignment, explainShift, findCover, repairWeek, solveWeek } from "./index";
 import type { Assignment, Rule, SchedulingInput, Slot, Staff } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -316,6 +316,118 @@ describe("repair", () => {
     expect(changedOthers).toEqual([]);
     expect(repaired.moved).toHaveLength(0);
     expect(independentProblems(fixture, repaired.assignments)).toEqual([]);
+  });
+});
+
+describe("repair fallback", () => {
+  it("uses the full search when keeping previous placements leaves a slot unfilled", () => {
+    const input: SchedulingInput = {
+      staff: [
+        { id: "ann", name: "Ann", roles: ["bar", "server"], maxShifts: 1 },
+        { id: "ben", name: "Ben", roles: ["bar"], maxShifts: 1 },
+      ],
+      slots: [
+        { id: "a-bar", date: "2026-11-04", start: "09:00", end: "11:00", role: "bar" },
+        { id: "b-server", date: "2026-11-04", start: "09:00", end: "11:00", role: "server" },
+      ],
+      rules: [],
+    };
+    // Keeping Ann on the bar shift uses up her one allowed shift, so the server shift has nobody.
+    const previous: Assignment[] = [{ slotId: "a-bar", staffId: "ann", locked: false }];
+    expect(independentProblems(input, previous)).toEqual([]);
+
+    const repaired = repairWeek(input, previous);
+
+    expect(repaired.unfilled).toEqual([]);
+    expect(repaired.assignments).toEqual([
+      { slotId: "a-bar", staffId: "ben", locked: false },
+      { slotId: "b-server", staffId: "ann", locked: false },
+    ]);
+    expect(repaired.moved).toEqual([{ slotId: "a-bar", fromStaffId: "ann", toStaffId: "ben" }]);
+    expect(independentProblems(input, repaired.assignments)).toEqual([]);
+  });
+});
+
+describe("repair after a manager's move", () => {
+  it("changes the other shift that the move makes break a rule, and leaves locked shifts alone", () => {
+    const input: SchedulingInput = {
+      staff: [
+        { id: "dan", name: "Dan", roles: ["server"], maxShifts: 3 },
+        { id: "eli", name: "Eli", roles: ["server"], maxShifts: 3 },
+        { id: "fay", name: "Fay", roles: ["bar"], maxShifts: 3 },
+      ],
+      slots: [
+        { id: "tue-close", date: "2026-11-03", start: "17:00", end: "22:30", role: "server" },
+        { id: "tue-lunch", date: "2026-11-03", start: "11:00", end: "16:00", role: "server" },
+        { id: "wed-bar", date: "2026-11-04", start: "17:00", end: "23:00", role: "bar" },
+      ],
+      rules: [{ id: "rest", staffId: "dan", severity: "hard", kind: "min_rest", hours: 10 }],
+    };
+    // The manager puts Dan on the Tuesday close, which leaves his Tuesday lunch only 1 hour after it.
+    const previous: Assignment[] = [
+      { slotId: "tue-lunch", staffId: "dan", locked: false },
+      { slotId: "tue-close", staffId: "dan", locked: false },
+      { slotId: "wed-bar", staffId: "fay", locked: true },
+    ];
+    expect(independentProblems(input, previous).some((p) => p.includes("min_rest"))).toBe(true);
+
+    const repaired = repairWeek(input, previous);
+
+    expect(repaired.unfilled).toEqual([]);
+    expect(repaired.lockedViolations).toEqual([]);
+    expect(repaired.assignments).toContainEqual({ slotId: "wed-bar", staffId: "fay", locked: true });
+    expect(repaired.assignments).toContainEqual({ slotId: "tue-close", staffId: "dan", locked: false });
+    expect(repaired.assignments).toContainEqual({ slotId: "tue-lunch", staffId: "eli", locked: false });
+    expect(repaired.moved).toEqual([{ slotId: "tue-lunch", fromStaffId: "dan", toStaffId: "eli" }]);
+    expect(independentProblems(input, repaired.assignments)).toEqual([]);
+  });
+});
+
+describe("explainShift", () => {
+  const input: SchedulingInput = {
+    staff: [
+      { id: "ann", name: "Ann", roles: ["bar"], maxShifts: 5 },
+      { id: "ben", name: "Ben", roles: ["bar"], maxShifts: 5 },
+    ],
+    slots: [
+      { id: "bar-1", date: "2026-11-04", start: "17:00", end: "23:00", role: "bar" },
+      { id: "bar-2", date: "2026-11-05", start: "17:00", end: "23:00", role: "bar" },
+    ],
+    rules: [],
+  };
+
+  it("explains the given person, not the one the solver would pick", () => {
+    // The solver puts Ann on bar-1 (name order breaks the tie), so this given Ben is a real disagreement.
+    expect(solveWeek(input).traces["bar-1"].staffId).toBe("ann");
+    const given: Assignment[] = [{ slotId: "bar-1", staffId: "ben", locked: false }];
+    const before = JSON.stringify({ input, given });
+
+    const trace = explainShift(input, given, "bar-1");
+
+    expect(trace.slotId).toBe("bar-1");
+    expect(trace.staffId).toBe("ben");
+    expect(trace.locked).toBe(false);
+    expect(trace.reasons).toContain("Has 1 shifts this week, the team average is 0.5.");
+    expect(trace.alternatives.find((a) => a.staffId === "ben")!.allowed).toBe(true);
+    expect(JSON.stringify({ input, given })).toBe(before);
+  });
+
+  it("marks a locked assignment as locked and reports unassigned slots as unfilled", () => {
+    const given: Assignment[] = [{ slotId: "bar-2", staffId: "ann", locked: true }];
+    const locked = explainShift(input, given, "bar-2");
+    expect(locked.staffId).toBe("ann");
+    expect(locked.reasons[0]).toBe("Locked by the manager.");
+
+    const open = explainShift(input, given, "bar-1");
+    expect(open.staffId).toBeNull();
+    expect(open.reasons.length).toBeGreaterThan(0);
+  });
+
+  it("rejects unknown ids", () => {
+    expect(() => explainShift(input, [], "nope")).toThrow(/Unknown slot id: nope/);
+    expect(() => explainShift(input, [{ slotId: "bar-1", staffId: "ghost", locked: false }], "bar-1")).toThrow(
+      /Unknown staff id: ghost/,
+    );
   });
 });
 

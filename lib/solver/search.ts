@@ -27,10 +27,19 @@ interface Best {
   placed: Placement[];
 }
 
+/** Reads an element whose index the caller has already bounds-checked. Throws rather than return undefined. */
+function valueAt(values: number[], k: number): number {
+  const v = values[k];
+  if (v === undefined) throw new Error(`index ${k} is outside a list of length ${values.length}`);
+  return v;
+}
+
 export function compareKeys(a: number[], b: number[]): number {
   const n = Math.min(a.length, b.length);
   for (let i = 0; i < n; i++) {
-    if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
+    const x = valueAt(a, i);
+    const y = valueAt(b, i);
+    if (x !== y) return x < y ? -1 : 1;
   }
   return 0;
 }
@@ -64,9 +73,9 @@ export function searchPlacements(
   const bump = (staffId: string, slotId: string, delta: number): void => {
     const k = model.staffIdx.get(staffId)!;
     const iv = model.iv.get(slotId)!;
-    counts.shifts[k] += delta;
-    if (iv.close) counts.closes[k] += delta;
-    if (iv.weekend) counts.weekends[k] += delta;
+    counts.shifts[k] = valueAt(counts.shifts, k) + delta;
+    if (iv.close) counts.closes[k] = valueAt(counts.closes, k) + delta;
+    if (iv.weekend) counts.weekends[k] = valueAt(counts.weekends, k) + delta;
   };
   for (const [staffId, slotIds] of base.byStaff) {
     for (const slotId of slotIds) bump(staffId, slotId, 1);
@@ -100,6 +109,7 @@ export function searchPlacements(
     }
 
     const slotId = order[i];
+    if (slotId === undefined) throw new Error(`search position ${i} is past the ${order.length} open slots`);
     const slot = model.slotById.get(slotId)!;
     const iv = model.iv.get(slotId)!;
     const prev = prefer.get(slotId);
@@ -114,9 +124,9 @@ export function searchPlacements(
         staffId: st.id,
         pref: prev === st.id ? 0 : 1,
         soft: ev.soft.length,
-        closes: counts.closes[k] + (iv.close ? 1 : 0),
-        weekends: counts.weekends[k] + (iv.weekend ? 1 : 0),
-        shifts: counts.shifts[k] + 1,
+        closes: valueAt(counts.closes, k) + (iv.close ? 1 : 0),
+        weekends: valueAt(counts.weekends, k) + (iv.weekend ? 1 : 0),
+        shifts: valueAt(counts.shifts, k) + 1,
       });
     }
     cands.sort(
@@ -148,14 +158,14 @@ export function searchPlacements(
   return state.best === null ? [] : state.best.placed;
 }
 
-interface Stats {
+export interface Stats {
   shifts: number[];
   hours: number[];
   closes: number[];
   weekends: number[];
 }
 
-function computeStats(model: Model, sched: Sched): Stats {
+export function computeStats(model: Model, sched: Sched): Stats {
   const n = model.staff.length;
   const stats: Stats = {
     shifts: new Array<number>(n).fill(0),
@@ -167,16 +177,16 @@ function computeStats(model: Model, sched: Sched): Stats {
     const k = model.staffIdx.get(staffId)!;
     for (const slotId of slotIds) {
       const iv = model.iv.get(slotId)!;
-      stats.shifts[k] += 1;
-      stats.hours[k] += iv.hours;
-      if (iv.close) stats.closes[k] += 1;
-      if (iv.weekend) stats.weekends[k] += 1;
+      stats.shifts[k] = valueAt(stats.shifts, k) + 1;
+      stats.hours[k] = valueAt(stats.hours, k) + iv.hours;
+      if (iv.close) stats.closes[k] = valueAt(stats.closes, k) + 1;
+      if (iv.weekend) stats.weekends[k] = valueAt(stats.weekends, k) + 1;
     }
   }
   return stats;
 }
 
-function buildTrace(
+export function buildTrace(
   model: Model,
   sched: Sched,
   stats: Stats,
@@ -221,12 +231,14 @@ function buildTrace(
       st.roles.includes(slot.role) ? `Has the ${slot.role} role.` : `Does not have the ${slot.role} role.`,
     );
     reasons.push(
-      `Has ${stats.closes[k]} closes this week, the team average is ${average(stats.closes).toFixed(1)}.`,
+      `Has ${valueAt(stats.closes, k)} closes this week, the team average is ${average(stats.closes).toFixed(1)}.`,
     );
     reasons.push(
-      `Has ${stats.weekends[k]} weekend shifts this week, the team average is ${average(stats.weekends).toFixed(1)}.`,
+      `Has ${valueAt(stats.weekends, k)} weekend shifts this week, the team average is ${average(stats.weekends).toFixed(1)}.`,
     );
-    reasons.push(`Has ${stats.shifts[k]} shifts this week, the team average is ${average(stats.shifts).toFixed(1)}.`);
+    reasons.push(
+      `Has ${valueAt(stats.shifts, k)} shifts this week, the team average is ${average(stats.shifts).toFixed(1)}.`,
+    );
     for (const v of own.soft) reasons.push(`Breaks a soft rule: ${v.message}`);
   }
 
@@ -266,10 +278,10 @@ export function finish(model: Model, locked: Assignment[], placed: Placement[]):
   const fairness: Fairness = {
     people: model.staff.map((st, k) => ({
       staffId: st.id,
-      shifts: stats.shifts[k],
-      hours: stats.hours[k],
-      closes: stats.closes[k],
-      weekends: stats.weekends[k],
+      shifts: valueAt(stats.shifts, k),
+      hours: valueAt(stats.hours, k),
+      closes: valueAt(stats.closes, k),
+      weekends: valueAt(stats.weekends, k),
     })),
     averages: {
       shifts: average(stats.shifts),

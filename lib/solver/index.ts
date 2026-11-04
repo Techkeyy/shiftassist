@@ -7,10 +7,11 @@ import type {
   SolveInput,
   SolveResult,
   Staff,
+  Trace,
 } from "./types";
 import { buildModel, buildSched, cmpText, evaluate, requireSlot, requireStaff } from "./model";
 import type { Model } from "./model";
-import { compareKeys, finish, searchPlacements } from "./search";
+import { buildTrace, compareKeys, computeStats, finish, searchPlacements } from "./search";
 import type { Placement } from "./search";
 
 export * from "./types";
@@ -54,7 +55,7 @@ function repairCost(
   lockedSlots: Set<string>,
   placed: Placement[],
   prefer: Map<string, string>,
-): number[] {
+): [number, number] {
   const got = new Map<string, string>(placed);
   let unfilled = 0;
   for (const s of model.slots) {
@@ -65,6 +66,21 @@ function repairCost(
     if (got.get(slotId) !== staffId) changes++;
   }
   return [unfilled, changes];
+}
+
+/**
+ * Explains one slot as the given assignments leave it. Nothing is re-solved and the input is
+ * not changed. The Trace is built only from `assignments`, so it describes the people given
+ * here, not whoever the solver would choose.
+ */
+export function explainShift(input: SchedulingInput, assignments: Assignment[], slotId: string): Trace {
+  const model = buildModel(input);
+  requireRefs(model, assignments);
+  requireSlot(model, slotId);
+  const sched = buildSched(model, assignments);
+  const stats = computeStats(model, sched);
+  const lockedSlots = new Set(assignments.filter((a) => a.locked).map((a) => a.slotId));
+  return buildTrace(model, sched, stats, slotId, lockedSlots);
 }
 
 /**
