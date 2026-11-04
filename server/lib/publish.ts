@@ -118,45 +118,49 @@ function esc(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-const CSS = `
-*{box-sizing:border-box}body{margin:0;font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1a1a1a;background:#f6f5f1}
-main{max-width:720px;margin:0 auto;padding:16px}h1{font-size:1.35rem;margin:.2em 0}h2{font-size:1.05rem;margin:1.4em 0 .4em}
-.tag{display:inline-block;background:#ffe9a8;border-radius:4px;padding:2px 8px;font-size:.8rem;font-weight:600}
-.muted{color:#5c5c5c;font-size:.9rem}nav a{display:inline-block;margin:6px 8px 6px 0;padding:6px 12px;border:1px solid #bbb;border-radius:999px;color:inherit;text-decoration:none;background:#fff}
-.day{background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px 12px;margin:10px 0}.day h3{margin:0 0 6px;font-size:1rem}
-.row{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-top:1px solid #eee}.row:first-of-type{border-top:0}
-.open{color:#a33;font-weight:600}details{border-top:1px solid #eee;padding:6px 0}summary{cursor:pointer}ul{margin:.4em 0 .2em 1.1em;padding:0}
-`;
+// Styles live in public/staff-page.css (kept out of the page so the page text stays free of at-signs).
+const CSS_HREF = "/staff-page.css";
+
+const ZIG = `<svg class="zig" viewBox="0 0 120 10" preserveAspectRatio="none" aria-hidden="true"><rect width="100%" height="10" fill="url(#z)"/></svg>`;
+const MARK = `<svg width="20" height="24" viewBox="0 0 24 28" aria-hidden="true" fill="currentColor"><path d="M4 5h16v19l-2.67-2.5L14.67 24 12 21.5 9.33 24 6.67 21.5 4 24z" opacity=".2"/><path d="M4 5h16v19l-2.67-2.5L14.67 24 12 21.5 9.33 24 6.67 21.5 4 24z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.5 11.5h7M8.5 15.5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M7 1.5h10v6.5a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1z"/><rect x="10.4" y="3.6" width="3.2" height="3" rx=".6" fill="var(--card)"/></svg>`;
 
 /** A phone-friendly page that needs no JavaScript and no login. Every string is escaped. */
 export function renderPublicWeekHtml(w: PublicWeek): string {
   const days = w.days
     .map(
-      (d) => `<section class="day"><h3>${esc(d.label)}</h3>${d.shifts
+      (d) => `<section class="sheet"><h3>${esc(d.label)}</h3>${d.shifts
         .map(
           (s) =>
-            `<div class="row"><span>${esc(s.label)} <span class="muted">${esc(s.start)}-${esc(s.end)}</span></span>${
+            `<div class="row"><span>${esc(s.label)} <span class="t">${esc(s.start)}-${esc(s.end)}</span></span>${
               s.person ? `<strong>${esc(s.person)}</strong>` : `<span class="open">Open</span>`
             }</div>`,
         )
         .join("")}</section>`,
     )
     .join("");
+  const find = w.people.map((p, i) => `<li><a href="#p${i}">${esc(p.name)}</a></li>`).join("");
   const people = w.people
     .map(
-      (p) => `<section class="day"><h3>${esc(p.name)}</h3>${p.shifts
+      (p, i) => `<section class="sheet person" id="p${i}"><h3>${esc(p.name)}</h3>${p.shifts
         .map(
           (s) =>
-            `<details><summary>${esc(s.day)}: ${esc(s.label)} ${esc(s.start)}-${esc(s.end)}</summary><ul>${s.reasons
-              .map((r) => `<li>${esc(r)}</li>`)
-              .join("")}</ul></details>`,
+            `<div class="row"><span>${esc(s.day)}</span><span>${esc(s.label)} <span class="t">${esc(s.start)}-${esc(s.end)}</span></span></div>`,
         )
-        .join("")}</section>`,
+        .join("")}${p.shifts
+        .map(
+          (s) =>
+            `<details class="rc"><summary>Why ${esc(s.day)}, ${esc(s.label)}?</summary><div class="receipt"><p class="head">${esc(p.name)} has this shift because</p><span class="t">${esc(s.label)} ${esc(s.start)}-${esc(s.end)}</span><ul>${s.reasons
+              .map((r) => `<li>${esc(r)}</li>`)
+              .join("")}</ul>${ZIG}</div></details>`,
+        )
+        .join("")}<a class="back" href="#find">Back to names</a></section>`,
     )
     .join("");
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${esc(w.name)}</title><style>${CSS}</style></head><body><main><h1>${esc(w.name)}</h1>${
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${esc(w.name)}</title><link rel="stylesheet" href="${CSS_HREF}"></head><body><svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><pattern id="z" width="12" height="10" patternUnits="userSpaceOnUse"><polyline points="0,-2 6,9 12,-2" fill="var(--card)" stroke="var(--rs,var(--rule-strong))" stroke-width="1.2"/></pattern></defs></svg><main><span class="brand">${MARK}ShiftAssist</span><h1>${esc(w.name)}</h1>${
     w.isSample ? `<p><span class="tag">SAMPLE, not a real restaurant</span></p>` : ""
-  }<p class="muted">Week of ${esc(longDate(w.startDate))}. This page always shows the current rota.</p><nav><a href="#days">By day</a><a href="#people">By person</a></nav><h2 id="days">By day</h2>${days}<h2 id="people">By person, and why</h2>${people || `<p class="muted">Nobody is on a shift yet.</p>`}</main></body></html>`;
+  }<p class="muted">Week of ${esc(longDate(w.startDate))}. This page always shows the current rota.</p><h2 id="find">Find your name</h2>${
+    find ? `<ul class="find">${find}</ul>` : `<p class="muted">Nobody is on a shift yet.</p>`
+  }<h2 id="days">The whole week</h2>${days}<h2 id="people">Each person, and why</h2>${people || `<p class="muted">Nobody is on a shift yet.</p>`}</main></body></html>`;
 }
 
 const hits = new Map<string, { n: number; reset: number }>();

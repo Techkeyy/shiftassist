@@ -18,8 +18,10 @@ function ExampleRail() {
           {EXAMPLES.map((t) => (
             <li key={t.no} className="ticket">
               <Clip className="ticket-clip" />
-              {t.stamped ? <Stamp /> : null}
-              <span className="ticket-no">No. {t.no}</span>
+              <div className="ticket-head flex flex-wrap items-center gap-2">
+                <span className="ticket-no">No. {t.no}</span>
+                {t.stamped ? <Stamp /> : null}
+              </div>
               <p className="ticket-source">"{t.said}"</p>
               <p className="ticket-rule">{t.rule}</p>
               <Zig />

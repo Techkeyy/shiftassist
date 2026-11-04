@@ -93,7 +93,8 @@ export function FairnessLine({
   average: number;
   max: number;
 }) {
-  const above = count > average + 0.001;
+  // Only when at least one whole shift above the engine's (fractional) team average.
+  const above = count - average >= 1;
   return (
     <div className="tally-line" data-above={above ? "true" : undefined}>
       <span className="tally-label">{label}</span>

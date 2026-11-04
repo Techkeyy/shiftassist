@@ -208,7 +208,7 @@ export function ShiftPanel({
                             </>
                           ) : (
                             <>
-                              <span className="struck">{o.name}<Strike /></span> {o.blockedBy.length ? o.blockedBy.map((b, i) => (b.startsWith(o.name) ? b.slice(o.name.length) : `: ${b}`) + (i < o.blockedBy.length - 1 ? " " : "")).join("") : ": not available."}
+                              <span className="struck">{o.name}<Strike /></span> {o.blockedBy.length ? o.blockedBy.map((b, i) => (i > 0 ? b : b.startsWith(o.name) ? b.slice(o.name.length) : `: ${b}`) + (i < o.blockedBy.length - 1 ? " " : "")).join("") : ": not available."}
                             </>
                           )}
                         </li>

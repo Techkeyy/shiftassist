@@ -139,7 +139,7 @@ export function SetupForm({
 
   return (
     <form
-      className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6"
+      className="setup mx-auto max-w-3xl space-y-6 p-4 sm:p-6"
       onSubmit={(e) => {
         e.preventDefault();
         submit(false);
@@ -147,38 +147,38 @@ export function SetupForm({
       aria-label="Set up my restaurant"
     >
       <div>
-        <h1 className="text-xl font-semibold">{editing ? "Edit staff and shifts" : "Set up my restaurant"}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="display setup-title">{editing ? "Edit staff and shifts" : "Set up my restaurant"}</h1>
+        <p className="hint mt-1">
           Add your people, then describe a typical week. You can change both later.
         </p>
       </div>
 
-      <label className="block text-sm">
-        <span className="font-medium">Week starts on</span>
+      <label className="setup-field block">
+        <span>Week starts on</span>
         <input type="date" required className={`${inputCls} mt-1 max-w-48`} value={weekStart} onChange={(e) => setWeekStart(e.target.value)} />
       </label>
 
       <section aria-labelledby="staff-h" className="space-y-3">
-        <h2 id="staff-h" className="font-medium">Your staff</h2>
+        <h2 id="staff-h" className="display setup-h">Your staff</h2>
         {staff.map((s, i) => (
-          <div key={i} className="grid gap-2 rounded-lg border p-3 sm:grid-cols-6" data-testid="staff-setup-row">
-            <label className="text-xs sm:col-span-2">
+          <div key={i} className="grid gap-2 setup-row sm:grid-cols-6" data-testid="staff-setup-row">
+            <label className="setup-field sm:col-span-2">
               Name
               <input className={inputCls} value={s.name} onChange={(e) => patchStaff(i, { name: e.target.value })} aria-label={`Person ${i + 1} name`} />
             </label>
-            <label className="text-xs sm:col-span-2">
+            <label className="setup-field sm:col-span-2">
               Roles (comma separated)
               <input className={inputCls} placeholder="cook, server" value={s.roles} onChange={(e) => patchStaff(i, { roles: e.target.value })} aria-label={`Person ${i + 1} roles`} />
             </label>
-            <label className="text-xs">
+            <label className="setup-field">
               Max shifts / week
               <input className={inputCls} inputMode="numeric" value={s.maxShifts} onChange={(e) => patchStaff(i, { maxShifts: e.target.value })} aria-label={`Person ${i + 1} max shifts`} />
             </label>
-            <label className="text-xs">
+            <label className="setup-field">
               Hourly rate (optional)
               <input className={inputCls} inputMode="numeric" value={s.hourlyRate} onChange={(e) => patchStaff(i, { hourlyRate: e.target.value })} aria-label={`Person ${i + 1} hourly rate`} />
             </label>
-            <label className="text-xs sm:col-span-2">
+            <label className="setup-field sm:col-span-2">
               Overtime after (hours a week, optional)
               <input className={inputCls} inputMode="numeric" value={s.overtimeAfterHours} onChange={(e) => patchStaff(i, { overtimeAfterHours: e.target.value })} aria-label={`Person ${i + 1} overtime hours`} />
             </label>
@@ -197,33 +197,33 @@ export function SetupForm({
       </section>
 
       <section aria-labelledby="pattern-h" className="space-y-3">
-        <h2 id="pattern-h" className="font-medium">A typical week</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 id="pattern-h" className="display setup-h">A typical week</h2>
+        <p className="hint">
           One line per kind of shift, for example "Dinner server, server, 17:00 to 23:00, Mon to Sat, 2 people". A shift that ends at or before its start runs past midnight.
         </p>
         {pattern.map((p, i) => (
-          <div key={i} className="grid gap-2 rounded-lg border p-3 sm:grid-cols-6" data-testid="pattern-setup-row">
-            <label className="text-xs sm:col-span-2">
+          <div key={i} className="grid gap-2 setup-row sm:grid-cols-6" data-testid="pattern-setup-row">
+            <label className="setup-field sm:col-span-2">
               Shift name
               <input className={inputCls} value={p.name} onChange={(e) => patchPattern(i, { name: e.target.value })} aria-label={`Shift ${i + 1} name`} />
             </label>
-            <label className="text-xs sm:col-span-2">
+            <label className="setup-field sm:col-span-2">
               Role needed
               <input className={inputCls} placeholder="server" value={p.role} onChange={(e) => patchPattern(i, { role: e.target.value })} aria-label={`Shift ${i + 1} role`} />
             </label>
-            <label className="text-xs">
+            <label className="setup-field">
               Start
               <input type="time" className={inputCls} value={p.start} onChange={(e) => patchPattern(i, { start: e.target.value })} aria-label={`Shift ${i + 1} start`} />
             </label>
-            <label className="text-xs">
+            <label className="setup-field">
               End
               <input type="time" className={inputCls} value={p.end} onChange={(e) => patchPattern(i, { end: e.target.value })} aria-label={`Shift ${i + 1} end`} />
             </label>
             <fieldset className="sm:col-span-4">
-              <legend className="text-xs">Days</legend>
+              <legend className="setup-field">Days</legend>
               <div className="mt-1 flex flex-wrap gap-2">
                 {DAYS.map(([label, n]) => (
-                  <label key={n} className="flex items-center gap-1 text-sm">
+                  <label key={n} className="setup-day flex items-center gap-1">
                     <input
                       type="checkbox"
                       checked={p.days.includes(n)}
@@ -237,7 +237,7 @@ export function SetupForm({
                 ))}
               </div>
             </fieldset>
-            <label className="text-xs">
+            <label className="setup-field">
               How many people
               <input className={inputCls} inputMode="numeric" value={p.count} onChange={(e) => patchPattern(i, { count: e.target.value })} aria-label={`Shift ${i + 1} people`} />
             </label>
@@ -256,13 +256,13 @@ export function SetupForm({
       </section>
 
       {problem ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="problem-line">
           {problem}
         </p>
       ) : null}
 
       {confirmText !== null ? (
-        <div role="alertdialog" aria-label="Confirm replace" className="rounded-lg border border-destructive p-3 text-sm">
+        <div role="alertdialog" aria-label="Confirm replace" className="setup-row setup-confirm">
           <p>
             {confirmText}
           </p>
@@ -290,7 +290,7 @@ export function SetupForm({
         ) : null}
       </div>
       {replacingSample ? (
-        <p className="text-xs text-muted-foreground">
+        <p className="setup-field text-muted-foreground">
           You are replacing the sample restaurant. You will be asked to confirm before anything is removed.
         </p>
       ) : null}

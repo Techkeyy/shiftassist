@@ -367,14 +367,12 @@ function RuleCardView({
   card,
   week,
   onError,
-  no,
   fresh,
   index,
 }: {
   card: Card;
   week: WeekView;
   onError: (m: string) => void;
-  no: number;
   fresh?: boolean;
   index?: number;
 }) {
@@ -393,11 +391,10 @@ function RuleCardView({
       style={{ ["--i" as string]: index ?? 0 }}
     >
       <Clip className="ticket-clip" />
-      {!proposed ? <Stamp fresh={fresh} index={index ?? 0} /> : null}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="ticket-no">No. {String(no).padStart(2, "0")}</span>
+      <div className="ticket-head flex flex-wrap items-center gap-2">
         <Badge severity={card.severity} />
         <span className="hint">{proposed ? "Waiting for you" : "In use"}</span>
+        {!proposed ? <Stamp fresh={fresh} index={index ?? 0} /> : null}
       </div>
       {card.source ? <p className="ticket-source">"{card.source}"</p> : null}
       <p className="ticket-rule">{card.text}</p>
@@ -516,7 +513,7 @@ export function RulesPanel({ week }: { week: WeekView }) {
               {[...proposed, ...stampedNow]
                 .sort((a, b) => noOf(a.id) - noOf(b.id))
                 .map((c, i) => (
-                  <RuleCardView key={c.id} card={c} week={week} onError={setError} no={noOf(c.id)} fresh={c.status === "confirmed"} index={i} />
+                  <RuleCardView key={c.id} card={c} week={week} onError={setError} fresh={c.status === "confirmed"} index={i} />
                 ))}
             </ul>
           </div>
@@ -549,7 +546,7 @@ export function RulesPanel({ week }: { week: WeekView }) {
               <RailBar />
               <ul aria-label="Confirmed rules">
                 {earlier.map((c) => (
-                  <RuleCardView key={c.id} card={c} week={week} onError={setError} no={noOf(c.id)} />
+                  <RuleCardView key={c.id} card={c} week={week} onError={setError} />
                 ))}
               </ul>
             </div>

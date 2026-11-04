@@ -6,7 +6,7 @@ Read this first if you are taking over. Standard: `Desktop/skill/master director
 
 Owner evidence (2026-11-04, live, fresh account): sign-up works; model shows `deepseek-flash` and the assistant replied, so the org-default risk did not occur. Bug: pasted messages stuck on "reading" and never appeared in chat (sent to UI builder). Owner rejected the current look: design direction is `docs/design-brief.md` ("The Pass"), to be built after the UI builder finishes.
 
-Design round 1 reviewed by director: concept right, execution rejected (one-item sidebar, long scroll, barcode-like tally, noisy day-arc, wall of red in receipt, mono in prose, wrong drag text on phones). Round 2 dispatched with exact list. Still to do after it: landing page in `server/lib/landing-html.ts`, public page styling in `server/lib/publish.ts`, full walk with real model, redeploy, owner paste test result, owner UAT. Not deployed: live site is still commit 3760040.
+Design round 2 accepted by director from screenshots (sheet, rules drawer, welcome, phone by-day); 56 of 56 tests re-run. Builder now on landing page, public staff page, polish and full walk with the real model. Still to do after it: redeploy, owner paste test result, owner UAT, README, Clips demo, public repo, submission. Not deployed: live site is still commit 3760040.
 
 Director may not create accounts on the production host, so live account testing is owner UAT, one step at a time. Check: `/database` returns 200 logged out; confirm it is only the app shell with no data.
 

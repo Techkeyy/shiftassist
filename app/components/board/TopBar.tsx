@@ -4,7 +4,7 @@ import { OrgSwitcher } from "@agent-native/toolkit/app/org";
 import { Clip, Mark } from "./art";
 
 export type StepState = "done" | "current" | "todo";
-export type Step = { id: string; label: string; state: StepState; note: string };
+export type Step = { id: string; label: string; state: StepState; note: string; badge?: string };
 
 /** Slim top bar: mark, restaurant, the step rail, chat toggle, account. Replaces the left sidebar. */
 export function TopBar({
@@ -32,7 +32,7 @@ export function TopBar({
             >
               <Clip className="step-clip" closed={s.state !== "todo"} height={18} />
               <span className="step-label">{s.label}</span>
-              <span className="step-state">{s.state === "done" ? "Done" : s.state === "current" ? "Next" : ""}</span>
+              <span className="step-state" data-badge={s.badge ? "true" : undefined}>{s.badge ?? (s.state === "done" ? "Done" : s.state === "current" ? "Next" : "")}</span>
             </button>
           </li>
         ))}

@@ -147,7 +147,7 @@ function CountedNote({ closes, weekends }: { closes: number; weekends: number })
       {open ? (
         <div id="counted-note" className="popover" role="region" aria-label="How this is counted">
           <p>A close is a shift that ends at 22:00 or later. A weekend shift is one on Saturday or Sunday.</p>
-          <p>Each mark is one shift; a slash through four makes five. The triangle under the line is the team average ({closes.toFixed(1)} closes, {weekends.toFixed(1)} weekend shifts). "Above avg" means more than that average.</p>
+          <p>Each mark is one shift; a slash through four makes five. The triangle under the line is the team average ({closes.toFixed(1)} closes, {weekends.toFixed(1)} weekend shifts). "Above avg" means at least one whole shift more than that average.</p>
           <p>The figures come from the scheduling engine and update as you move shifts.</p>
         </div>
       ) : null}
@@ -177,7 +177,22 @@ export function Board() {
   const [rulesSeen, setRulesSeen] = useState(false);
   const [panelInit, setPanelInit] = useState(false);
   const [dismissedChange, setDismissedChange] = useState<string | null>(null);
-  const [dismissedMessage, setDismissedMessage] = useState<string | null>(null);
+  // Remembered per browser so a reload does not pop the same cover message open again.
+  const [dismissedMessage, setDismissedMessageState] = useState<string | null>(() => {
+    try {
+      return typeof window === "undefined" ? null : window.localStorage.getItem("sa-dismissed-cover");
+    } catch {
+      return null;
+    }
+  });
+  const setDismissedMessage = (at: string | null) => {
+    setDismissedMessageState(at);
+    try {
+      if (at) window.localStorage.setItem("sa-dismissed-cover", at);
+    } catch {
+      /* private mode: fine */
+    }
+  };
   const [sampleError, setSampleError] = useState<string | null>(null);
   const [agentRunning, setAgentRunning] = useState(false);
   const [buildResult, setBuildResult] = useState<BuildResult | null>(null);
@@ -386,7 +401,8 @@ export function Board() {
     {
       id: "rules",
       label: "Rules",
-      state: ns === "rules" || ns === "confirm" ? "current" : confirmedCount > 0 ? "done" : "todo",
+      state: ns === "rules" || ns === "confirm" || proposedCount > 0 ? "current" : confirmedCount > 0 ? "done" : "todo",
+      ...(proposedCount > 0 ? { badge: `${proposedCount} waiting` } : {}),
       note: proposedCount > 0 ? `${proposedCount} to check` : `${confirmedCount} in use`,
     },
     {

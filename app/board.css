@@ -434,10 +434,12 @@
     border-top: 1px solid hsl(var(--rule));
   }
   .topbar-steps-phone .step {
-    padding: 0 8px;
+    gap: 4px;
+    padding: 0 5px;
+    font-size: 0.875rem;
     min-height: 2.75rem;
   }
-  .topbar-steps-phone .step-state {
+  .topbar-steps-phone .step-state:not([data-badge]) {
     display: none;
   }
   .topbar-row {
@@ -948,9 +950,9 @@
   }
 }
 .stamp {
-  position: absolute;
-  right: 10px;
-  top: 10px;
+  position: relative;
+  flex: none;
+  margin: 4px 6px 4px auto;
   color: hsl(var(--allowed));
   transform: rotate(4deg);
   pointer-events: none;
@@ -1162,15 +1164,6 @@
 .ticket:has(.stamp) .ticket-no {
   padding-right: 0;
 }
-.ticket:has(.stamp) .ticket-source {
-  margin-right: 8.75rem;
-}
-@media (max-width: 479px) {
-  .ticket:has(.stamp) .ticket-source {
-    margin-right: 0;
-    margin-top: 2.25rem;
-  }
-}
 .example-tag {
   display: inline-block;
   margin-bottom: 0.5rem;
@@ -1179,9 +1172,78 @@
   font-size: 0.875rem;
   font-weight: 600;
 }
-.ticket .stamp {
-  top: 2.25rem;
+.ticket-head {
+  min-height: 2.75rem;
 }
 .btn {
   white-space: nowrap;
+}
+
+/* ---------- Setup form: ruled paper, tokens only ---------- */
+.setup-title {
+  font-size: 1.75rem;
+  line-height: 1.2;
+}
+.setup-h {
+  font-size: 1.25rem;
+  border-bottom: 1px solid hsl(var(--rule-strong));
+  padding-bottom: 0.25rem;
+}
+.setup-row {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--rule-strong));
+  padding: 0.75rem;
+}
+.setup-confirm {
+  border-color: hsl(var(--problem));
+}
+.setup-field {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+.setup-field input:not([type="checkbox"]) {
+  margin-top: 0.125rem;
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid hsl(var(--input));
+  border-radius: 6px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  padding: 0.375rem 0.625rem;
+  font: inherit;
+  font-weight: 400;
+  font-size: 1rem;
+}
+.setup-field input:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 1px;
+}
+.setup-day {
+  min-height: 2.75rem;
+  padding-right: 0.5rem;
+  font-size: 0.9375rem;
+}
+.setup-day input {
+  width: 1.125rem;
+  height: 1.125rem;
+  accent-color: hsl(var(--primary));
+}
+@media (min-width: 640px) {
+  .setup-field input:not([type="checkbox"]) {
+    min-height: 2.25rem;
+    font-size: 0.9375rem;
+  }
+  .setup-day {
+    min-height: 2rem;
+  }
+}
+.setup-field input[type="time"] {
+  padding-inline: 0.375rem;
+  font-size: 0.875rem;
+}
+.setup-field input[type="time"]::-webkit-calendar-picker-indicator {
+  margin-left: 0;
+  padding: 0;
 }
