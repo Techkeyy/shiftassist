@@ -1,5 +1,5 @@
 import { useActionMutation, useActionQuery } from "@agent-native/core/client/hooks";
-import { sendToAgentChat } from "@agent-native/core/client/agent-chat";
+import { sendToAgentChatAndConfirm } from "@agent-native/core/client/agent-chat";
 import { useEffect, useRef, useState } from "react";
 
 import type { WeekView } from "../../../server/lib/week-view";
@@ -96,18 +96,32 @@ function PasteBox({ week, onAddByHand }: { week: WeekView; onAddByHand: () => vo
     }
     baseline.current = cardsNow;
     sawRunning.current = false;
-    sendToAgentChat({
+    const opts = {
       message:
         `Here are my staff's messages for the week starting ${week.week?.startDate}. ` +
         `Read them and use propose-rules to store each rule as a proposed card with the original sentence as the source. ` +
-        `Do not confirm anything. If a message is unclear or names someone who is not on staff, say so.\n\n` +
-        `--- staff messages ---\n${body}\n--- end ---`,
+        `Do not confirm anything. If a message is unclear or names someone who is not on staff, say so.
+
+` +
+        `--- staff messages ---
+${body}
+--- end ---`,
+      chatTarget: "local" as const,
       submit: true,
       openSidebar: true,
-      newTab: true,
-    });
+    };
     setSentAt(Date.now());
     setSlow(false);
+    // Never assume the chat took it: ask for confirmation. If a new chat tab can't be made
+    // (or the panel didn't answer), retry once in the open tab, then say so and keep the text.
+    let r = await sendToAgentChatAndConfirm({ ...opts, newTab: true });
+    if (!r.delivered) r = await sendToAgentChatAndConfirm(opts);
+    if (!r.delivered) {
+      setSentAt(null);
+      setFailed(
+        "Your messages didn't reach the assistant chat, so nothing was sent. Your text is still in the box. Try again, or add the rules by hand.",
+      );
+    }
   }
 
   const limitMsg = limit ?? (status.data?.exhausted ? status.data.message : null);
