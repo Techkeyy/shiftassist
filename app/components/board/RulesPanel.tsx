@@ -16,7 +16,7 @@ const DAY_LABELS: [string, number][] = [
 
 function Badge({ severity }: { severity: "hard" | "soft" }) {
   return (
-    <span className="mono border px-1.5 text-sm" style={{ borderColor: "hsl(var(--rule-strong))" }}>
+    <span className="badge" style={{ borderColor: "hsl(var(--rule-strong))" }}>
       {severity === "hard" ? "Must" : "Preference"}
     </span>
   );
@@ -49,7 +49,7 @@ function EmptyRail() {
   );
 }
 
-function PasteBox({ week, onAddByHand }: { week: WeekView; onAddByHand: () => void }) {
+function PasteBox({ week, onAddByHand, compact }: { week: WeekView; onAddByHand: () => void; compact?: boolean }) {
   const [text, setText] = useState("");
   const [sentAt, setSentAt] = useState<number | null>(null);
   const [slow, setSlow] = useState(false);
@@ -156,7 +156,8 @@ ${body}
       <textarea
         id="paste-box"
         data-testid="paste-box"
-        className={`${inputCls} min-h-32`}
+        className={`${inputCls} ${compact ? "min-h-20" : "min-h-32"}`}
+        aria-describedby="paste-help"
         maxLength={MAX_PASTE}
         placeholder={"Paste texts or notes from your staff, one after another.\nFor example: \"Maya: can't do Fridays, school pickup\""}
         value={text}
@@ -176,10 +177,11 @@ ${body}
             </button>
           </>
         ) : null}
-        <span className="hint mono">
+        <span className="hint">
           {text.length}/{MAX_PASTE}
         </span>
       </div>
+      {!text.trim() && sentAt === null ? <p id="paste-help" className="hint">Paste a message above to read it. The example messages are ready to try.</p> : <span id="paste-help" />}
       {limitMsg ? <p role="alert" className="problem-line">{limitMsg}</p> : null}
       {failed ? (
         <div role="alert" className="space-y-2 text-sm">
@@ -439,7 +441,8 @@ function RuleCardView({
 export function RulesPanel({ week }: { week: WeekView }) {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showConfirmed, setShowConfirmed] = useState(false);
+  const [showConfirmed, setShowConfirmed] = useState(() => !week.rules.some((r) => r.status === "proposed" && r.kind !== "note"));
+  const [showPaste, setShowPaste] = useState(false);
   const confirmAll = useActionMutation("confirm-rules");
   const notes = week.rules.filter((r) => r.kind === "note");
   const proposed = week.rules.filter((r) => r.status === "proposed" && r.kind !== "note");
@@ -452,9 +455,25 @@ export function RulesPanel({ week }: { week: WeekView }) {
   const earlier = confirmed.filter((r) => !seenProposed.current.has(r.id));
   const noOf = (id: string) => week.rules.findIndex((r) => r.id === id) + 1;
 
+  const hasTickets = proposed.length > 0 || stampedNow.length > 0 || notes.length > 0 || confirmed.length > 0;
+  const paste = hasTickets ? (
+    <div>
+      <button type="button" className="link" aria-expanded={showPaste} onClick={() => setShowPaste((v) => !v)}>
+        {showPaste ? "Hide the paste box" : "Paste more messages"}
+      </button>
+      {showPaste ? (
+        <div className="mt-2">
+          <PasteBox week={week} onAddByHand={() => setAdding(true)} compact />
+        </div>
+      ) : null}
+    </div>
+  ) : (
+    <PasteBox week={week} onAddByHand={() => setAdding(true)} />
+  );
+
   return (
     <div className="space-y-5">
-      <PasteBox week={week} onAddByHand={() => setAdding(true)} />
+      {hasTickets ? null : paste}
 
       {error ? (
         <p role="alert" className="problem-line">
@@ -468,7 +487,7 @@ export function RulesPanel({ week }: { week: WeekView }) {
 
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="section-title">Rules to check <span className="mono text-base">({proposed.length})</span></h3>
+          <h3 className="section-title">Rules to check <span className="count-pill">({proposed.length})</span></h3>
           {ready.length > 0 ? (
             <button
               type="button"
@@ -488,18 +507,17 @@ export function RulesPanel({ week }: { week: WeekView }) {
               <EmptyRail />
             </div>
           ) : (
-            <p className="hint mt-2">Nothing waiting. Paste messages above and the rules your assistant finds will show up here for you to confirm.</p>
+            <p className="hint mt-2">Nothing waiting. Paste messages below and the rules your assistant finds will hang here for you to confirm.</p>
           )
         ) : (
-          <div className="rail-wrap mt-2">
+          <div className="rail-wrap mt-2 rail-hero">
             <RailBar />
             <ul aria-label="Proposed rules">
-              {proposed.map((c, i) => (
-                <RuleCardView key={c.id} card={c} week={week} onError={setError} no={noOf(c.id)} index={i} />
-              ))}
-              {stampedNow.map((c, i) => (
-                <RuleCardView key={c.id} card={c} week={week} onError={setError} no={noOf(c.id)} fresh index={i} />
-              ))}
+              {[...proposed, ...stampedNow]
+                .sort((a, b) => noOf(a.id) - noOf(b.id))
+                .map((c, i) => (
+                  <RuleCardView key={c.id} card={c} week={week} onError={setError} no={noOf(c.id)} fresh={c.status === "confirmed"} index={i} />
+                ))}
             </ul>
           </div>
         )}
@@ -507,7 +525,7 @@ export function RulesPanel({ week }: { week: WeekView }) {
 
       {notes.length > 0 ? (
         <div>
-          <h3 className="section-title">Needs your eye <span className="mono text-base">({notes.length})</span></h3>
+          <h3 className="section-title">Needs your eye <span className="count-pill">({notes.length})</span></h3>
           <div className="rail-wrap mt-2">
             <RailBar />
             <ul aria-label="Notes that are not rules">
@@ -538,6 +556,8 @@ export function RulesPanel({ week }: { week: WeekView }) {
           )
         ) : null}
       </div>
+
+      {hasTickets ? paste : null}
 
       {adding ? (
         <RuleEditor card={null} week={week} onClose={() => setAdding(false)} />

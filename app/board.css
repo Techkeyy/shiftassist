@@ -5,10 +5,15 @@
   font-weight: 600;
   letter-spacing: 0;
 }
-.num,
 .mono {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+[hidden] {
+  display: none !important;
 }
 
 /* ---------- Buttons ---------- */
@@ -34,9 +39,32 @@
 .btn:active:not(:disabled) {
   transform: scale(0.98);
 }
+/* Disabled reads as "not yet", not as broken: an empty dashed outline with plain secondary ink. */
 .btn:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  border: 1px dashed hsl(var(--rule-strong));
+}
+.btn-sm {
+  min-height: 2rem;
+  padding: 0 0.625rem;
+  font-size: 0.875rem;
+}
+@media (pointer: coarse) {
+  .btn-sm {
+    min-height: 2.75rem;
+  }
+}
+.badge,
+.count-pill {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+}
+.badge {
+  border: 1px solid hsl(var(--rule-strong));
+  padding: 0 0.375rem;
 }
 .btn-primary {
   background: hsl(var(--primary));
@@ -99,42 +127,200 @@
   line-height: 1.35;
 }
 
-/* ---------- Step rail ---------- */
-.steps {
+/* ---------- App frame: slim top bar, one sheet, one drawer ---------- */
+.board-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: hsl(var(--background));
+}
+.board-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.board-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.board-center {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 16px 12px;
+}
+.board-sheet {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.board-sheet > .sheet {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.board-title {
   display: flex;
   flex-wrap: wrap;
-  border: 1px solid hsl(var(--rule-strong));
+  align-items: center;
+  gap: 4px 16px;
+}
+.week-of {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.guidance {
+  min-width: 0;
+}
+.board-title-end {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+.primary-slot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.board-notes {
+  display: grid;
+  gap: 6px;
+}
+.board-notes:empty {
+  display: none;
+}
+.board-note {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  border-left: 4px solid hsl(var(--foreground));
+  padding: 2px 0 2px 10px;
+  font-size: 0.9375rem;
+}
+.board-note[data-kind="problem"] {
+  border-left-color: hsl(var(--problem));
+}
+.board-note[data-kind="ok"] {
+  border-left-color: hsl(var(--allowed));
+}
+.board-note[data-kind="changed"] {
+  border-left-color: hsl(var(--changed));
+}
+.popover-wrap {
+  position: relative;
+}
+.popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  display: grid;
+  gap: 6px;
+  width: 22rem;
+  max-width: 80vw;
+  padding: 10px 12px;
   background: hsl(var(--card));
+  border: 1px solid hsl(var(--rule-strong));
+  font-size: 0.9375rem;
+  line-height: 1.35;
+}
+
+/* ---------- Top bar and step rail ---------- */
+.topbar {
+  flex: none;
+  background: hsl(var(--card));
+  border-bottom: 1px solid hsl(var(--rule-strong));
+}
+.topbar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 3rem;
+  padding: 0 12px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  color: hsl(var(--foreground));
+}
+.brand-word {
+  font-size: 1.125rem;
+}
+.topbar-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding-left: 12px;
+  border-left: 1px solid hsl(var(--rule-strong));
+  font-size: 1.125rem;
+}
+.topbar-name .display {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sample-tag {
+  flex: none;
+  border: 1px solid hsl(var(--rule-strong));
+  padding: 0 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+}
+.topbar-steps-slot {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+.topbar-steps ol {
+  display: flex;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.topbar-end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.topbar-steps-phone {
+  display: none;
 }
 .step {
-  position: relative;
-  flex: 1 1 0;
-  min-width: 9rem;
-  min-height: 3rem;
-  padding: 0.375rem 0.75rem 0.375rem 2.5rem;
-  border-right: 1px solid hsl(var(--rule));
-  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 2.25rem;
+  padding: 0 10px;
+  border-radius: 6px;
   background: transparent;
   color: inherit;
   cursor: pointer;
   font-size: 0.9375rem;
   font-weight: 600;
-  line-height: 1.2;
-}
-.step:last-child {
-  border-right: 0;
+  white-space: nowrap;
 }
 .step:hover {
   background: hsl(var(--accent));
 }
-.step .step-clip {
-  position: absolute;
-  left: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-}
 .step .step-state {
-  display: block;
   font-size: 0.875rem;
   font-weight: 400;
   color: hsl(var(--muted-foreground));
@@ -146,6 +332,141 @@
 .step[aria-current="step"] .step-state {
   color: hsl(var(--changed-foreground));
 }
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* ---------- Drawer ---------- */
+.drawer {
+  flex: none;
+  width: 24rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: hsl(var(--card));
+  border-left: 1px solid hsl(var(--rule-strong));
+}
+.drawer-backdrop {
+  display: none;
+}
+.drawer-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid hsl(var(--rule));
+}
+.drawer-head h2:focus {
+  outline: none;
+}
+.drawer-head h2:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+}
+.drawer-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 16px 18px;
+}
+.drawer-foot {
+  flex: none;
+  display: grid;
+  gap: 8px;
+  padding: 10px 16px 12px;
+  border-top: 1px solid hsl(var(--rule-strong));
+  background: hsl(var(--card));
+}
+
+@media (max-width: 1023px) {
+  .board-root {
+    height: auto;
+    min-height: 100%;
+  }
+  .board-main {
+    display: block;
+  }
+  .board-sheet > .sheet {
+    overflow: visible;
+  }
+  .drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    background: hsl(var(--foreground) / 0.35);
+  }
+  .drawer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    width: auto;
+    height: auto;
+    max-height: 88dvh;
+    border-left: 0;
+    border-top: 2px solid hsl(var(--foreground));
+    animation: sheet-up 240ms var(--ease-out) both;
+  }
+}
+@keyframes sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (max-width: 767px) {
+  .topbar-steps-slot,
+  .brand-word,
+  .guidance + .board-title-end .popover-wrap {
+    display: none;
+  }
+  .topbar-steps-phone {
+    display: block;
+    overflow-x: auto;
+    border-top: 1px solid hsl(var(--rule));
+  }
+  .topbar-steps-phone .step {
+    padding: 0 8px;
+    min-height: 2.75rem;
+  }
+  .topbar-steps-phone .step-state {
+    display: none;
+  }
+  .topbar-row {
+    padding: 0 8px;
+    gap: 8px;
+  }
+}
+@media (max-width: 639px) {
+  .board-center {
+    padding: 8px 10px 5.5rem;
+  }
+  .primary-slot {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    flex-wrap: nowrap;
+    padding: 10px 12px;
+    background: hsl(var(--card));
+    border-top: 1px solid hsl(var(--rule-strong));
+  }
+  .primary-slot > .btn {
+    flex: 1;
+  }
+  .board-title-end {
+    margin-left: 0;
+  }
+}
 
 /* ---------- The sheet ---------- */
 .sheet {
@@ -155,27 +476,39 @@
   overflow-x: auto;
 }
 .rota {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   width: 100%;
-  min-width: 960px;
+  min-width: 52rem;
   table-layout: fixed;
 }
 .rota th,
 .rota td {
-  border: 1px solid hsl(var(--rule));
+  border-right: 1px solid hsl(var(--rule));
+  border-bottom: 1px solid hsl(var(--rule));
   vertical-align: top;
   padding: 0;
 }
+.rota th:last-child,
+.rota td:last-child {
+  border-right: 0;
+}
+.rota tbody tr:last-child > * {
+  border-bottom: 0;
+}
 .rota thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   border-bottom: 2px solid hsl(var(--rule-strong));
   background: hsl(var(--background));
   text-align: left;
-  padding: 0.5rem 0.625rem;
+  padding: 0.375rem 0.625rem;
   font-weight: 500;
   line-height: 1.2;
 }
-.rota thead th:first-child {
-  width: 9.5rem;
+.rota .staff-col {
+  width: 13.75rem;
 }
 .rota .day-name {
   display: block;
@@ -186,27 +519,57 @@
 .rota .day-date {
   display: block;
   color: hsl(var(--muted-foreground));
-  font-family: var(--font-mono);
   font-size: 0.875rem;
 }
 .rota tbody th {
   background: hsl(var(--background));
   text-align: left;
-  padding: 0.5rem 0.625rem;
+  padding: 0.375rem 0.5rem;
   font-weight: 500;
 }
-.rota tbody th .who {
-  display: block;
+.rota .who,
+.tally-card .who {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 1.0625rem;
-  line-height: 1.15;
+  line-height: 1.2;
 }
-.rota tbody th .meta {
+.rota .roles {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+}
+.rota .limit,
+.tally-card .limit {
+  margin-left: auto;
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  font-variant-numeric: tabular-nums;
+}
+.rota .meta {
   display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: hsl(var(--muted-foreground));
   font-size: 0.875rem;
-  line-height: 1.3;
+  line-height: 1.25;
+}
+.rota .tallies {
+  display: block;
+  margin-top: 1px;
 }
 .rota tbody tr > * {
   transition: opacity 150ms var(--ease-out);
@@ -216,7 +579,6 @@
 }
 .rota td {
   position: relative;
-  height: 4.5rem;
 }
 .rota td[data-over="true"] {
   background: hsl(var(--accent));
@@ -239,15 +601,18 @@
 }
 .rota td .ok-mark {
   position: absolute;
-  left: 6px;
+  right: 4px;
   bottom: 3px;
   z-index: 3;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  padding: 0 4px;
   font-size: 0.875rem;
   font-weight: 600;
   color: hsl(var(--allowed));
+  background: hsl(var(--allowed-soft));
+  pointer-events: none;
 }
 .rota td .why-blocked {
   position: absolute;
@@ -273,27 +638,47 @@
   outline: 2px solid hsl(var(--ring));
   outline-offset: -2px;
 }
-.rota .open-row th {
+.rota .open-row th .who {
   color: hsl(var(--problem));
 }
 
-/* A shift slip: square, mono times, a small day-arc. */
+/* Lunch and Dinner bands: fixed positions in every cell, so a week reads across like a rota. */
+.bands {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  min-height: 4.5rem;
+  height: 100%;
+}
+.band {
+  flex: 1 1 0;
+  min-height: 2.25rem;
+  padding: 1px 0;
+}
+.band[data-band="dinner"] {
+  background: color-mix(in srgb, hsl(var(--foreground)) 4%, transparent);
+  border-top: 1px dashed hsl(var(--rule));
+}
+
+/* A shift slip: square, shift name and a short time in mono. */
 .slip {
   position: relative;
   z-index: 2;
   display: block;
-  width: calc(100% - 8px);
-  margin: 4px;
-  padding: 3px 6px 3px 7px;
+  margin: 2px 3px;
+  padding: 1px 5px 1px 6px;
   text-align: left;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--rule-strong));
   border-left: 4px solid hsl(var(--foreground));
   color: hsl(var(--foreground));
   cursor: grab;
-  line-height: 1.2;
+  line-height: 1.25;
   font-size: 0.875rem;
   touch-action: manipulation;
+}
+.slip[data-band="dinner"] {
+  background: color-mix(in srgb, hsl(var(--foreground)) 10%, hsl(var(--card)));
 }
 .slip:hover {
   background: hsl(var(--accent));
@@ -308,6 +693,12 @@
 .slip[data-locked="true"] {
   border-left-color: hsl(var(--lock));
 }
+.slip-pin {
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 3px;
+  color: hsl(var(--lock));
+}
 .slip[data-open="true"] {
   border-style: dashed;
   border-left-style: solid;
@@ -321,18 +712,32 @@
   color: hsl(var(--changed-foreground));
   border-color: hsl(var(--changed-foreground));
 }
-.slip[data-changed="true"] .slip-sub,
-.slip[data-changed="true"] .slip-arc {
+.slip[data-changed="true"][data-locked="true"] {
+  border-left-color: hsl(var(--lock));
+}
+.slip[data-changed="true"] .slip-sub {
   color: hsl(var(--changed-foreground));
 }
 .slip-top {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
-  gap: 6px;
+  column-gap: 4px;
+}
+.slip-name {
   font-weight: 600;
+  white-space: nowrap;
+}
+.day-sheet .slip-name {
+  white-space: normal;
+}
+.slip-person {
+  font-weight: 500;
 }
 .slip-time {
+  flex: none;
+  margin-left: auto;
   font-family: var(--font-mono);
   font-size: 0.875rem;
   font-weight: 500;
@@ -340,15 +745,24 @@
   white-space: nowrap;
 }
 .slip-sub {
-  display: flex;
-  align-items: center;
-  gap: 5px;
+  display: block;
   color: hsl(var(--muted-foreground));
   font-size: 0.875rem;
+  line-height: 1.2;
 }
-.slip-arc {
-  flex: none;
-  color: hsl(var(--foreground));
+@container (max-width: 8.75rem) {
+  .nm-band {
+    display: none;
+  }
+  .slip {
+    margin: 2px;
+    padding-left: 4px;
+    padding-right: 3px;
+    border-left-width: 3px;
+  }
+  .slip-top {
+    column-gap: 3px;
+  }
 }
 .docket-flag {
   position: absolute;
@@ -359,6 +773,100 @@
   border-style: solid;
   border-width: 0 12px 12px 0;
   border-color: transparent hsl(var(--changed-foreground)) transparent transparent;
+}
+
+/* Tally marks live in the staff column. */
+.tally-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 1.5rem;
+  font-size: 0.875rem;
+  line-height: 1;
+}
+.tally-label {
+  flex: none;
+  width: 3.75rem;
+  color: hsl(var(--muted-foreground));
+}
+.tally-svg {
+  flex: none;
+  color: hsl(var(--foreground));
+}
+.tally-count {
+  flex: none;
+  min-width: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.tally-above {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tally-card {
+  border: 1px solid hsl(var(--rule));
+  padding: 8px 10px;
+}
+.tally-card .tally-line {
+  margin-top: 2px;
+}
+.tally-stroke {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+.tally-stroke[data-new="true"] {
+  animation: draw 240ms var(--ease-out) both;
+}
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Phone: by-day list. */
+.day-sheet {
+  overflow: visible;
+}
+.day-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid hsl(var(--rule));
+}
+.day-filter {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+.band-title {
+  padding: 8px 10px 0;
+  font-family: var(--font-ui);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+}
+.day-band[data-band="dinner"] {
+  margin-top: 6px;
+  background: color-mix(in srgb, hsl(var(--foreground)) 4%, transparent);
+  border-top: 1px dashed hsl(var(--rule));
+}
+.day-sheet .slip {
+  margin: 4px 8px;
+  padding: 8px 10px 8px 10px;
+  font-size: 1rem;
+  min-height: 2.75rem;
+}
+.day-sheet .slip-time {
+  font-size: 1rem;
 }
 
 /* ---------- Rail and tickets ---------- */
@@ -473,26 +981,13 @@
 /* ---------- Receipt ---------- */
 .receipt {
   position: relative;
-  max-width: 28rem;
   margin-bottom: 1.125rem;
-  padding: 1rem 1.25rem 1.5rem;
+  padding: 1rem 1.125rem 1.5rem;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--rule-strong));
-  border-top: 0;
   font-family: var(--font-mono);
   font-size: 0.875rem;
   line-height: 1.5;
-  animation: receipt-out 260ms var(--ease-out) both;
-}
-@keyframes receipt-out {
-  from {
-    opacity: 0;
-    transform: translateY(-16px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }
 .receipt .zig {
   position: absolute;
@@ -503,25 +998,59 @@
   color: hsl(var(--rule-strong));
   pointer-events: none;
 }
-.receipt-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
+.receipt-kicker {
+  color: hsl(var(--muted-foreground));
 }
-.receipt hr {
-  border: 0;
-  border-top: 1px dashed hsl(var(--rule-strong));
-  margin: 0.625rem 0;
-}
-.receipt h3 {
+.receipt-lead {
+  margin: 0.375rem 0 0.625rem;
   font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: 1.625rem;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.15;
 }
-.receipt .prose {
+.receipt-reasons {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0 0;
+  border-top: 1px dashed hsl(var(--rule-strong));
+}
+.receipt-reasons li {
+  padding-left: 1.25ch;
+  text-indent: -1.25ch;
+}
+.receipt-reasons li::before {
+  content: "- ";
+}
+.receipt-count {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed hsl(var(--rule-strong));
+}
+.who-else {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed hsl(var(--rule-strong));
+  color: hsl(var(--muted-foreground));
+}
+.who-else h4 {
+  margin-bottom: 0.25rem;
   font-family: var(--font-ui);
   font-size: 0.9375rem;
+  font-weight: 600;
+}
+.who-else .could {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+  color: hsl(var(--foreground));
+}
+.who-else .cannot {
+  color: hsl(var(--muted-foreground));
+}
+.receipt-text {
+  font-family: var(--font-mono);
 }
 .struck {
   position: relative;
@@ -535,49 +1064,8 @@
   width: calc(100% + 6px);
   height: 8px;
   transform: translateY(-50%);
-  color: hsl(var(--problem));
+  color: hsl(var(--muted-foreground));
   pointer-events: none;
-}
-
-/* ---------- Tally ---------- */
-.tally-row {
-  display: grid;
-  grid-template-columns: 9rem minmax(10rem, 16rem) minmax(10rem, 16rem);
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0;
-  border-top: 1px solid hsl(var(--rule));
-}
-.tally-marks {
-  position: relative;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-height: 28px;
-}
-.tally-stroke {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 0;
-}
-.tally-stroke[data-new="true"] {
-  animation: draw 240ms var(--ease-out) both;
-}
-@keyframes draw {
-  from {
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-@media (max-width: 640px) {
-  .tally-row {
-    grid-template-columns: 1fr 1fr;
-  }
-  .tally-row > :first-child {
-    grid-column: 1 / -1;
-  }
 }
 
 /* ---------- Agent working strip ---------- */
@@ -664,4 +1152,36 @@
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--muted-foreground) / 0.3);
   border-radius: 3px;
+}
+
+/* ---------- Tickets as the hero of the rules drawer; the welcome example ---------- */
+.rail-hero .ticket-source {
+  font-size: 1.25rem;
+}
+.ticket:has(.stamp) .ticket-source,
+.ticket:has(.stamp) .ticket-no {
+  padding-right: 0;
+}
+.ticket:has(.stamp) .ticket-source {
+  margin-right: 8.75rem;
+}
+@media (max-width: 479px) {
+  .ticket:has(.stamp) .ticket-source {
+    margin-right: 0;
+    margin-top: 2.25rem;
+  }
+}
+.example-tag {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  padding: 0 0.5rem;
+  border: 1px solid hsl(var(--rule-strong));
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.ticket .stamp {
+  top: 2.25rem;
+}
+.btn {
+  white-space: nowrap;
 }

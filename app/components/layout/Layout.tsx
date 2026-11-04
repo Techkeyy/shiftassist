@@ -89,6 +89,8 @@ function LayoutShell({ children }: LayoutProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const isChatRoute = isChatPathname(location.pathname);
+  // The week board owns its own slim top bar; no sidebar, no framework header.
+  const isBoard = location.pathname.startsWith("/board");
   // Settings brings its own navigation, header, and agent toggle, so it
   // renders full width.
   const settingsOwnsChrome = isSettingsPathname(location.pathname);
@@ -158,7 +160,7 @@ function LayoutShell({ children }: LayoutProps) {
           className="md:hidden"
           onOpenNavigation={openMobileSidebar}
         />
-      ) : settingsOwnsChrome ? null : (
+      ) : settingsOwnsChrome || isBoard ? null : (
         <Suspense fallback={<div className="h-12 shrink-0" />}>
           <Header onOpenMobileSidebar={openMobileSidebar} />
         </Suspense>
@@ -172,7 +174,7 @@ function LayoutShell({ children }: LayoutProps) {
   return (
     <HeaderActionsProvider>
       <div className="agent-layout-shell chat-layout-shell flex h-screen w-full overflow-hidden bg-background text-foreground">
-        {settingsOwnsChrome ? null : (
+        {settingsOwnsChrome || isBoard ? null : (
           <div
             data-collapsed={sidebarCollapsed ? "true" : "false"}
             className="agent-layout-left-drawer hidden md:block"

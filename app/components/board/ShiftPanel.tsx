@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 
 import type { WeekView } from "../../../server/lib/week-view";
 import { Clip, Strike, Zig } from "./art";
-import { btnDanger, btnPrimary, btnSecondary, dayLabel, errText } from "./format";
+import { btnDanger, btnPrimary, btnSecondary, dayLabel, errText, shapeReason } from "./format";
 
 type Slot = WeekView["slots"][number];
 
 /** Sick day: the engine's ranked cover options, each one a ticket. Choosing one moves the slip. */
-function CoverFlow({ slot, onClose, onNotice }: { slot: Slot; onClose: () => void; onNotice: (n: { kind: "ok" | "error"; text: string }) => void }) {
+export function CoverFlow({ slot, onClose, onNotice }: { slot: Slot; onClose: () => void; onNotice: (n: { kind: "ok" | "error"; text: string }) => void }) {
   const cover = useActionQuery("find-cover", { slotId: slot.id });
   const apply = useActionMutation("apply-cover");
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +74,7 @@ function CoverFlow({ slot, onClose, onNotice }: { slot: Slot; onClose: () => voi
                 <span className="display text-lg">
                   <span className="ticket-no">{i + 1}</span> {o.name}
                 </span>
-                <span className="mono">overtime cost {o.overtimeCost}</span>
+                <span>overtime cost <span className="mono">{o.overtimeCost}</span></span>
               </div>
               <ul className="mt-1 list-disc pl-5 text-[0.9375rem]">
                 {o.reasons.map((r, k) => (
@@ -102,20 +102,17 @@ function CoverFlow({ slot, onClose, onNotice }: { slot: Slot; onClose: () => voi
 export function ShiftPanel({
   slot,
   week,
-  onClose,
   onMove,
   moving,
-  onNotice,
+  onCover,
 }: {
   slot: Slot;
   week: WeekView;
-  onClose: () => void;
   onMove: (staffId: string, lock?: boolean) => void;
   moving: boolean;
-  onNotice: (n: { kind: "ok" | "error"; text: string }) => void;
+  onCover: () => void;
 }) {
   const why = useActionQuery("explain-shift", { slotId: slot.id });
-  const [covering, setCovering] = useState(false);
 
   const [askState, setAskState] = useState<"idle" | "queued" | "sent" | "failed">("idle");
 
@@ -150,87 +147,88 @@ export function ShiftPanel({
 
   const mine = week.fairness?.people.find((p) => p.staffId === slot.staffId);
   const avg = week.fairness?.averages.shifts;
+  const others = why.data?.others ?? [];
+  const couldWork = others.filter((o) => o.allowed);
+  const cannot = others.filter((o) => !o.allowed);
 
   return (
-    <section aria-label="Selected shift" data-testid="shift-panel" className="grid gap-5 lg:grid-cols-[28rem_minmax(0,1fr)]">
-      <div className="receipt" data-testid="why-panel">
-        <div className="receipt-row">
-          <h3>{slot.label}, {dayLabel(slot.date)}</h3>
-          <button type="button" className="link" onClick={onClose} aria-label="Close shift details">Close</button>
-        </div>
-        <hr />
-        <div className="receipt-row"><span>Shift</span><span>{slot.start}-{slot.end}</span></div>
-        <div className="receipt-row"><span>Person</span><span>{slot.staffName ?? "Open"}{slot.locked ? " (locked)" : ""}</span></div>
-        <hr />
-        <p style={{ fontWeight: 500 }}>{slot.staffId ? `Why ${slot.staffName}?` : "Why is this shift open?"}</p>
-        {why.isLoading ? (
-          <p role="status" className="hint">Checking the rules...</p>
-        ) : why.error ? (
-          <p role="alert" style={{ color: "hsl(var(--problem))" }}>
-            {errText(why.error, "Couldn't work out the reasons.")}{" "}
-            <button type="button" className="link" onClick={() => void why.refetch()}>Try again</button>
+    <>
+      <div className="drawer-body" data-testid="shift-panel">
+        <div className="receipt" data-testid="why-panel">
+          <p className="receipt-kicker">
+            {slot.label}, {dayLabel(slot.date)}, {slot.start}-{slot.end}
           </p>
-        ) : why.data ? (
-          <>
-            <ul>
-              {why.data.reasons.map((r, i) => (
-                <li key={i}>- {r}</li>
-              ))}
-            </ul>
-            {mine && avg !== undefined ? (
-              <>
-                <hr />
-                <div className="receipt-row">
-                  <span>{mine.name}: shifts</span>
-                  <span>{mine.shifts} (team average {avg.toFixed(1)})</span>
-                </div>
-              </>
-            ) : null}
-            <div hidden={!why.data.staffId}>
-              <hr />
-              <p style={{ fontWeight: 500 }}>Who else</p>
-              {why.data.others.length === 0 ? (
-                <p className="hint">There is nobody else on your staff list.</p>
-              ) : (
-                <ul className="space-y-1">
-                  {why.data.others.map((o) => (
-                    <li key={o.staffId}>
-                      {o.allowed ? (
+          <h3 className="receipt-lead">
+            {slot.staffId ? `${slot.staffName} has this shift${slot.locked ? " (locked)" : ""} because` : "This shift is open because"}
+          </h3>
+          {why.isLoading ? (
+            <p role="status" className="hint">Checking the rules...</p>
+          ) : why.error ? (
+            <p role="alert" className="problem-line">
+              {errText(why.error, "Couldn't work out the reasons.")}{" "}
+              <button type="button" className="link" onClick={() => void why.refetch()}>Try again</button>
+            </p>
+          ) : why.data ? (
+            <>
+              <ul className="receipt-reasons">
+                {why.data.reasons.map((r, i) => (
+                  <li key={i}>{r}</li>
+                ))}
+              </ul>
+              {mine && avg !== undefined ? (
+                <p className="receipt-count">
+                  {mine.name}: {mine.shifts} shifts, team average {avg.toFixed(1)}
+                </p>
+              ) : null}
+              <div hidden={!why.data.staffId} className="who-else">
+                <h4>Who else</h4>
+                {others.length === 0 ? (
+                  <p className="hint">There is nobody else on your staff list.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {couldWork.map((o) => (
+                      <li key={o.staffId} className="could" data-testid="could-work">
                         <span>
-                          {o.name}: could have worked it
+                          <strong>{o.name}</strong> could have worked it
                           {o.wouldBreakSoft.length ? `, though it goes against a preference: ${o.wouldBreakSoft.join(" ")}` : "."}
                         </span>
-                      ) : (
-                        <span>
-                          <span className="struck">
-                            {o.name}
-                            <Strike />
-                          </span>{" "}
-                          <span style={{ color: "hsl(var(--problem))" }}>can't: {o.blockedBy.join(" ")}</span>
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </>
-        ) : null}
-        <hr />
-        <button type="button" className={`${btnSecondary} w-full`} onClick={askWhy} disabled={askState === "queued"} title="Your assistant explains it in plain words">
-          {askState === "queued" ? "Asking..." : "Ask the assistant why"}
-        </button>
-        {askState === "sent" ? <p role="status" className="hint mt-2">Sent to your assistant. Its answer is in the chat panel.</p> : null}
-        {askState === "failed" ? <p role="alert" className="mt-2" style={{ color: "hsl(var(--problem))" }}>Your assistant didn't take that. Try Ask why again; the reasons above are still right.</p> : null}
-        <Zig />
+                        <button type="button" className="btn btn-secondary btn-sm" disabled={moving} onClick={() => onMove(o.staffId)}>
+                          Move here
+                        </button>
+                      </li>
+                    ))}
+                    {cannot.map((o) => {
+                      const shaped = o.blockedBy.map((b) => shapeReason(o.name, b));
+                      const allShort = shaped.length > 0 && shaped.every((x) => !x.exact);
+                      return (
+                        <li key={o.staffId} className="cannot">
+                          {allShort ? (
+                            <>
+                              <span className="struck">{o.name}<Strike /></span>: {shaped.map((x) => x.text).join("; ")}
+                            </>
+                          ) : (
+                            <>
+                              <span className="struck">{o.name}<Strike /></span> {o.blockedBy.length ? o.blockedBy.map((b, i) => (b.startsWith(o.name) ? b.slice(o.name.length) : `: ${b}`) + (i < o.blockedBy.length - 1 ? " " : "")).join("") : ": not available."}
+                            </>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </>
+          ) : null}
+          <Zig />
+        </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="drawer-foot">
         <div className="flex flex-wrap items-end gap-2">
           <label className="field-label">
             Move to...
             <select
-              className="field mt-1 block min-w-44"
+              className="field mt-1 block min-w-40"
               aria-label="Move this shift to"
               data-testid="move-to"
               value=""
@@ -253,14 +251,20 @@ export function ShiftPanel({
               {slot.locked ? "Unlock this shift" : `Lock to ${slot.staffName}`}
             </button>
           ) : null}
+        </div>
+        <div className="flex flex-wrap gap-2">
           {slot.staffId ? (
-            <button type="button" className={btnSecondary} onClick={() => setCovering(true)} disabled={covering}>
+            <button type="button" className={btnSecondary} onClick={onCover}>
               Someone can't make it
             </button>
           ) : null}
+          <button type="button" className={btnSecondary} onClick={askWhy} disabled={askState === "queued"} title="Your assistant explains it in plain words">
+            {askState === "queued" ? "Asking..." : "Ask the assistant why"}
+          </button>
         </div>
-        {covering ? <CoverFlow slot={slot} onClose={() => setCovering(false)} onNotice={onNotice} /> : null}
+        {askState === "sent" ? <p role="status" className="hint">Sent to your assistant. Its answer is in the chat panel.</p> : null}
+        {askState === "failed" ? <p role="alert" className="problem-line">Your assistant didn't take that. Try Ask why again; the reasons above are still right.</p> : null}
       </div>
-    </section>
+    </>
   );
 }

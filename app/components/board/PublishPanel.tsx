@@ -17,7 +17,7 @@ export function PublishPanel({ week }: { week: WeekView }) {
       {week.published && link ? (
         <div data-testid="published" className="space-y-3">
           <p className="text-[0.9375rem]">
-            <span className="mono border px-1.5" style={{ borderColor: "hsl(var(--allowed))", color: "hsl(var(--allowed))" }}>
+            <span className="badge" style={{ borderColor: "hsl(var(--allowed))", color: "hsl(var(--allowed))" }}>
               Live
             </span>{" "}
             Staff can open this link on their phone. It always shows the current rota, so changes you make appear there too.
@@ -25,7 +25,7 @@ export function PublishPanel({ week }: { week: WeekView }) {
           </p>
           <label className="field-label">
             Public link
-            <input readOnly aria-label="Public link" className="field mono mt-1" value={link} onFocus={(e) => e.currentTarget.select()} />
+            <input readOnly aria-label="Public link" className="field mt-1" value={link} onFocus={(e) => e.currentTarget.select()} />
           </label>
           <div className="flex flex-wrap gap-2">
             <button

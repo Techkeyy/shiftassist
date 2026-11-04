@@ -70,3 +70,54 @@ export async function copyText(text: string): Promise<boolean> {
     }
   }
 }
+
+/** A slip's time, always short enough never to clip: "10-16", "10:30-16". Full times live on the receipt. */
+export function slotTime(start: string, end: string): string {
+  const part = (t: string) => {
+    const [h, m] = t.split(":").map(Number) as [number, number];
+    return m === 0 ? String(h) : `${h}:${String(m).padStart(2, "0")}`;
+  };
+  return `${part(start)}-${part(end)}`;
+}
+
+/** Lunch or dinner band, from the real start time. Before 15:00 is lunch. */
+export function bandOf(start: string): "lunch" | "dinner" {
+  const h = Number(start.split(":")[0]);
+  return h < 15 ? "lunch" : "dinner";
+}
+
+/** The data label may say "SAMPLE: ... (not your data)"; the screen shows the plain restaurant name. */
+export function cleanWeekName(name: string): string {
+  return name.replace(/^\s*sample:\s*/i, "").replace(/\s*\(not your data\)\s*$/i, "").trim() || name;
+}
+
+/** "Lunch cook" in a Lunch band becomes ["Lunch ", "cook"] so narrow columns can drop the band word. */
+export function splitBandLabel(label: string, band: "lunch" | "dinner"): [string, string] {
+  const word = band === "lunch" ? "Lunch" : "Dinner";
+  if (label.toLowerCase().startsWith(`${word.toLowerCase()} `) && label.length > word.length + 1) {
+    return [`${label.slice(0, word.length)} `, label.slice(word.length + 1)];
+  }
+  return ["", label];
+}
+
+/**
+ * Shortens one of the engine's "why not" sentences for the receipt, only for the exact shapes we know,
+ * and never invents a reason. Anything else comes back unchanged with `exact: true`.
+ */
+export function shapeReason(name: string, sentence: string): { text: string; exact: boolean } {
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  let m = sentence.match(new RegExp(`^${esc} is already at the limit of (\\d+) shifts?\\.$`));
+  if (m) return { text: `at the ${m[1]} shift limit`, exact: false };
+  m = sentence.match(new RegExp(`^${esc} doesn't have the (.+) role\\.$`));
+  if (m) {
+    const role = m[1]!;
+    return { text: `not ${/^[aeiou]/i.test(role) ? "an" : "a"} ${role}`, exact: false };
+  }
+  if (new RegExp(`^${esc} is already on the .+, which overlaps this shift\\.$`).test(sentence)) {
+    return { text: "already on an overlapping shift", exact: false };
+  }
+  if (new RegExp(`^${esc} already has a shift on .+\\.$`).test(sentence)) {
+    return { text: "already has a shift that day", exact: false };
+  }
+  return { text: sentence, exact: true };
+}

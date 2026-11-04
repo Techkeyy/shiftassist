@@ -39,35 +39,11 @@ export function Clip({ closed = true, className, height = 22 }: { closed?: boole
   );
 }
 
-function toFrac(hhmm: string): number {
-  const [h, m] = hhmm.split(":").map(Number) as [number, number];
-  const mins = h * 60 + m;
-  // The arc runs from 06:00 (low on the left) to 24:00 (the moon, low on the right).
-  return Math.min(1, Math.max(0, (mins - 6 * 60) / (18 * 60)));
-}
-
-/** Where a shift sits in the day: a half arc, sun side left, moon side right. */
-export function DayArc({ start, end, className }: { start: string; end: string; className?: string }) {
-  const cx = 18;
-  const cy = 14;
-  const r = 14;
-  const pt = (f: number) => {
-    const a = Math.PI * (1 - f);
-    return [cx + r * Math.cos(a), cy - r * Math.sin(a)] as const;
-  };
-  let [f0, f1] = [toFrac(start), toFrac(end)];
-  // A shift that closes after midnight ends at the moon.
-  if (end <= start) f1 = 1;
-  const [x0, y0] = pt(f0);
-  const [x1, y1] = pt(f1);
-  const [bx, by] = pt(0);
-  const [ex, ey] = pt(1);
+/** Pin icon for a locked shift. */
+export function Pin({ className }: { className?: string }) {
   return (
-    <svg width="36" height="17" viewBox="0 0 36 17" className={className} aria-hidden="true">
-      <path d={`M${bx} ${by}A${r} ${r} 0 0 1 ${ex} ${ey}`} fill="none" stroke="currentColor" strokeOpacity="0.35" strokeWidth="1.2" />
-      <path d={`M${x0} ${y0}A${r} ${r} 0 0 1 ${x1} ${y1}`} fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="butt" />
-      <circle cx={bx} cy={by} r="1.6" fill="currentColor" opacity="0.5" />
-      <path d={`M${ex + 0.5} ${ey - 3.2}a3.2 3.2 0 1 0 0 6.4a2.5 2.5 0 0 1 0-6.4z`} fill="currentColor" opacity="0.5" transform="translate(-2 0)" />
+    <svg width="14" height="14" viewBox="0 0 14 14" className={className} aria-hidden="true">
+      <path d="M4.5 1.5h5l-.7 4 2 2.2H2.7l2-2.2zM7 7.7v5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
 }
@@ -154,49 +130,54 @@ export function Strike() {
   );
 }
 
-const STROKE = 9;
-const GROUP = 54;
+const STROKE = 7;
+const GROUP = 4 * STROKE + 16;
 function xAt(n: number): number {
-  return Math.floor(n / 5) * GROUP + (n % 5) * STROKE;
+  return Math.floor(n / 5) * GROUP + 3 + (n % 5) * STROKE;
 }
 
-/** Tally marks: four strokes and a slash per five. Strokes draw in when the count rises. */
+/**
+ * Tally marks: four strokes and a slash per five, on a baseline. The small triangle under the line is the
+ * team average, drawn on the same scale so rows line up. Strokes draw in when the count rises.
+ */
 export function Tally({ count, average, label, max }: { count: number; average: number; label: string; max: number }) {
   const prev = useRef(count);
   const from = prev.current;
   useEffect(() => {
     prev.current = count;
   });
-  const width = xAt(Math.max(max, count, Math.ceil(average))) + GROUP * 0.4 + 8;
+  const top = Math.max(max, count, Math.ceil(average), 1);
+  const width = Math.ceil(xAt(top)) + 6;
   const strokes: React.ReactNode[] = [];
   for (let i = 0; i < count; i++) {
     const g = Math.floor(i / 5);
     const k = i % 5;
     const isNew = i >= from && from !== count;
-    const base = g * GROUP + 4;
+    const base = g * GROUP + 3;
     if (k < 4) {
       const x = base + k * STROKE;
       strokes.push(
-        <line key={i} className="tally-stroke" pathLength={1} data-new={isNew ? "true" : undefined} x1={x} y1={4} x2={x} y2={26} stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />,
+        <line key={i} className="tally-stroke" pathLength={1} data-new={isNew ? "true" : undefined} x1={x} y1={2} x2={x} y2={15} stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />,
       );
     } else {
       strokes.push(
-        <line key={i} className="tally-stroke" pathLength={1} data-new={isNew ? "true" : undefined} x1={base - 3} y1={24} x2={base + 3 * STROKE + 3} y2={6} stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />,
+        <line key={i} className="tally-stroke" pathLength={1} data-new={isNew ? "true" : undefined} x1={base - 3} y1={14} x2={base + 3 * STROKE + 3} y2={3} stroke="currentColor" strokeWidth="2" strokeLinecap="round" />,
       );
     }
   }
-  const avgX = Math.floor(average / 5) * GROUP + 4 + Math.min(average % 5, 4) * STROKE - 3;
+  const avgX = xAt(average);
   return (
     <svg
       className="tally-svg"
       width={width}
-      height={30}
-      viewBox={`0 0 ${width} 30`}
+      height={24}
+      viewBox={`0 0 ${width} 24`}
       role="img"
       aria-label={`${label}: ${count}. Team average ${average.toFixed(1)}`}
     >
-      <line x1={avgX} y1={0} x2={avgX} y2={30} stroke="hsl(var(--lock))" strokeWidth="1.5" strokeDasharray="2 3" />
+      <line x1={0} y1={18} x2={width} y2={18} stroke="hsl(var(--rule-strong))" strokeWidth="1" />
       {strokes}
+      <path d={`M${avgX - 4.5} 23.5L${avgX + 4.5} 23.5L${avgX} 18.8z`} fill="hsl(var(--muted-foreground))" />
     </svg>
   );
 }
