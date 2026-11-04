@@ -26,7 +26,7 @@ export default defineAction({
     if (view === "board" && owner) {
       const w = await buildWeekView(owner);
       if (!w.hasWeek) {
-        screen.board = { hasWeek: false, hint: "No week yet. The user can try the sample restaurant, or you can call load-sample-week." };
+        screen.board = { hasWeek: false, hint: "No week yet. The user can try the sample restaurant or set up their own restaurant on the Week page." };
       } else {
         const perPerson: Record<string, string[]> = {};
         for (const s of w.slots) {
@@ -40,6 +40,8 @@ export default defineAction({
           shiftsByPerson: perPerson,
           openShifts: w.slots.filter((s) => !s.staffId).map((s) => ({ slotId: s.id, description: s.description })),
           selectedShift: selected ?? null,
+          proposedRules: w.rules.filter((r) => r.status === "proposed").map((r) => ({ id: r.id, text: r.text, flag: r.flag })),
+          nextStep: w.nextStep,
           next: "Use get-week for ids, then move-shift to change who works a shift.",
         };
       }

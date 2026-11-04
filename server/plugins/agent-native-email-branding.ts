@@ -11,4 +11,10 @@ export default defineAppConfig({
     // Optional: use your own absolute HTTPS logo URL in transactional emails.
     // logoUrl: "https://example.com/logo.png",
   },
+  agent: {
+    // Model used when the browser's model picker sends none (a brand-new account). Without this
+    // a fresh sign-up falls through to the engine default (gpt-6-luna), which the DeepSeek
+    // endpoint rejects. AGENT_MODEL in the host environment overrides it.
+    model: "deepseek-flash",
+  },
 });

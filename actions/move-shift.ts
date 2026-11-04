@@ -5,7 +5,7 @@ import { moveShift } from "../server/lib/assignments.js";
 
 export default defineAction({
   description:
-    "Put one person on one shift (move it from whoever has it now, or fill an empty shift). Hard rules (availability, role, max shifts, rest, no overlaps, no double shifts) are checked on the server: if the move would break one it is refused with a plain-English reason and nothing changes. Repeating the same move changes nothing. Look up slotId and staffId with get-week first; never guess ids. Optionally lock the shift so later repairs leave it alone.",
+    "Put one person on one shift (move it from whoever has it now, or fill an empty shift). Hard rules (availability, role, max shifts, rest, no overlaps, no double shifts) are checked on the server: if the move would break one it is refused with a plain-English reason and nothing changes. A shift the manager has locked cannot be given to a different person: it is refused with 'This shift is locked. Unlock it first.' (unlock it first with lock:false for the same person, only if the manager says so). Repeating the same move changes nothing. Look up slotId and staffId with get-week first; never guess ids. Optionally lock the shift so later repairs leave it alone.",
   deferLoading: false,
   schema: z.object({
     slotId: z

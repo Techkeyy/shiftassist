@@ -15,8 +15,18 @@ export const weeks = pgTable(
     startDate: text("start_date").notNull(),
     isSample: boolean("is_sample").notNull().default(false),
     createdAt: text("created_at").notNull(),
+    /** JSON text: the typical-week pattern the shifts were generated from (null for the sample). */
+    pattern: text("pattern"),
+    /** Random unguessable token while the week is published; null when not shared. */
+    publishedToken: text("published_token"),
+    publishedAt: text("published_at"),
+    /** JSON text: what the last move, build or cover changed, so the board can highlight it. */
+    lastChange: text("last_change"),
   },
-  (t) => [uniqueIndex("shiftassist_weeks_owner_uq").on(t.ownerEmail)],
+  (t) => [
+    uniqueIndex("shiftassist_weeks_owner_uq").on(t.ownerEmail),
+    uniqueIndex("shiftassist_weeks_token_uq").on(t.publishedToken),
+  ],
 );
 
 export const staff = pgTable(
@@ -59,6 +69,12 @@ export const rules = pgTable(
     /** JSON text: the kind-specific fields of the solver Rule. */
     details: text("details").notNull().default("{}"),
     source: text("source"),
+    /** "proposed" rules never reach the solver; only "confirmed" ones do. */
+    status: text("status", { enum: ["proposed", "confirmed"] })
+      .notNull()
+      .default("confirmed"),
+    /** Set on a proposed rule that needs a person (name not on staff, ambiguous). */
+    flag: text("flag"),
   },
   (t) => [index("shiftassist_rules_owner_idx").on(t.ownerEmail)],
 );

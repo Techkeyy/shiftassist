@@ -161,7 +161,7 @@ function BoardNavLink({ collapsed }: { collapsed: boolean }) {
     <Link
       to="/board"
       aria-current={active ? "page" : undefined}
-      aria-label={collapsed ? "Board" : undefined}
+      aria-label={collapsed ? "Week" : undefined}
       className={cn(
         "flex items-center text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
         active && "bg-sidebar-accent",
@@ -171,7 +171,7 @@ function BoardNavLink({ collapsed }: { collapsed: boolean }) {
       )}
     >
       <IconCalendar className="size-4 shrink-0" strokeWidth={1.8} />
-      <span className={collapsed ? "sr-only" : "truncate"}>Board</span>
+      <span className={collapsed ? "sr-only" : "truncate"}>Week</span>
     </Link>
   );
 
@@ -179,7 +179,7 @@ function BoardNavLink({ collapsed }: { collapsed: boolean }) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>{link}</TooltipTrigger>
-        <TooltipContent side="right">Board</TooltipContent>
+        <TooltipContent side="right">Week</TooltipContent>
       </Tooltip>
     );
   }

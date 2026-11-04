@@ -1,54 +1,15 @@
 import { defineAction } from "@agent-native/core/action";
 import { z } from "zod";
 
-import { buildWeekView } from "../server/lib/week-view.js";
+import { buildWeekView, type WeekView } from "../server/lib/week-view.js";
 
 export default defineAction({
   description:
-    "Read the current user's restaurant week: staff (with ids, roles, shift counts), every shift slot (with id, day, time, role, and who holds it, if anyone), and the confirmed rules in plain English. Call this first to turn names like 'Maya' or 'Friday dinner' into the ids that move-shift needs.",
+    "Read the current user's restaurant week: the week start date, staff (ids, roles, shifts so far), every shift slot (id, day, time, role, who holds it, locked), ALL rules with their status (proposed = waiting for the manager, confirmed = in use) and the person each is about, fairness per person, whether the week is published, and the next step. Call this first to turn names like 'Maya' or 'Friday dinner' into the ids other actions need.",
   deferLoading: false,
   schema: z.object({}),
   http: { method: "GET" },
-  outputSchema: z.object({
-    hasWeek: z.boolean(),
-    week: z
-      .object({ name: z.string(), startDate: z.string(), isSample: z.boolean() })
-      .nullable(),
-    staff: z.array(
-      z.object({
-        id: z.string(),
-        name: z.string(),
-        roles: z.array(z.string()),
-        maxShifts: z.number(),
-        shiftCount: z.number(),
-      }),
-    ),
-    slots: z.array(
-      z.object({
-        id: z.string(),
-        date: z.string(),
-        start: z.string(),
-        end: z.string(),
-        role: z.string(),
-        label: z.string(),
-        description: z.string(),
-        staffId: z.string().nullable(),
-        staffName: z.string().nullable(),
-        locked: z.boolean(),
-      }),
-    ),
-    rules: z.array(
-      z.object({
-        id: z.string(),
-        staffId: z.string(),
-        staffName: z.string(),
-        severity: z.enum(["hard", "soft"]),
-        kind: z.string(),
-        text: z.string(),
-      }),
-    ),
-    unfilledSlotIds: z.array(z.string()),
-  }),
+  outputSchema: z.custom<WeekView>(),
   run: async (_args, ctx) => {
     const owner = ctx?.userEmail;
     if (!owner) throw new Error("Not signed in.");

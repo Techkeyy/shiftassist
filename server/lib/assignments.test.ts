@@ -40,7 +40,7 @@ beforeAll(async () => {
   }
   await writeSampleWeek(A, { replace: true, today: TODAY });
   await writeSampleWeek(B, { replace: true, today: TODAY });
-});
+}, 60_000);
 
 describe("moveShift", () => {
   it("applies a valid move and persists it", async () => {

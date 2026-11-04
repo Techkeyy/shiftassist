@@ -6,6 +6,15 @@ import { assignments, rules, slots, staff, weeks } from "../db/schema.js";
 
 export const SAMPLE_WEEK_NAME = "SAMPLE: The Corner Table (not your data)";
 
+/** Ready-to-paste staff messages for the sample restaurant. One names someone who isn't on staff. */
+export const SAMPLE_MESSAGES = [
+  "Tom: can't do Saturday this week, family wedding",
+  "Ana: please no closing shifts on Wednesday. Also I'd rather not work Thursday mornings",
+  "Jo: I'd prefer not to do more than 4 shifts this week",
+  "Carlos: I can only do Mondays",
+  "Sam: weekends off if possible",
+].join("\n");
+
 /** The Monday on or after `from` (UTC), as YYYY-MM-DD. */
 export function nextMonday(from: Date): string {
   const d = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()));

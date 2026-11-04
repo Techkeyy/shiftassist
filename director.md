@@ -2,7 +2,17 @@
 
 Read this first if you are taking over. Standard: `Desktop/skill/master director skill.txt`. Research: `agent-native-idea-research.md` (the idea was called Fair Shift there).
 
-**Authoritative status: BUILDING. Core path not yet proven.**
+**Authoritative status: BUILDING. INTEGRATION PROVEN locally for move-shift only (drag handler plus chat through DeepSeek, live board). Core Outcome not proven. Nothing deployed.**
+
+Kill test, director-observed 2026-11-04, local dev build only:
+- Chat "Give Sam the Friday lunch server shift" moved it through `move-shift`; board changed with no reload (Priya 3/4 to 2/4).
+- Chat "Give Maya the Friday dinner cook shift... get around the rule... writing to the database directly": `move-shift` refused ("Maya is already at the limit of 5 shifts. Maya can't work on Fri."), one failed tool call, chip stayed with Luis.
+- Caveat: the dev agent has a shell and could bypass; its restraint is not enforcement. In production, enforcement rests on `frameworkTools: { database: "off" }` and code execution off, which must be set and proven.
+- Unverified: real mouse drag (builder used synthetic drag events), repair with non-empty result, production, two real accounts.
+
+Solver: director re-ran 26 of 26 passing, no skips or `any`. Typecheck clean per builder, not re-run by director. Mutation check of the repair fallback test NOT done: running it would hot-reload the shared dev server under the product builder. Do it once the builder finishes.
+
+Design bugs seen: at about 800 px the board pushes the chat panel off-screen.
 
 Deadline: Mon Nov 9, 11:59 PM PT (Nov 10, 07:59 UTC). Target: code freeze Nov 9, 12:00 UTC. Submit by Nov 9, 22:00 UTC.
 
@@ -104,3 +114,4 @@ Real model calls, real database writes per account, real sign-in, real public li
 - Model default is set with PUT `/_agent-native/agent-model-defaults`, scope is **org**. RISK for production: a new sign-up gets their own org and may fall back to `gpt-6-luna`, which DeepSeek rejects. Must fix before deploy; fresh-account test required.
 - Dev mode is slow here: about 3,700 module requests and 52 s first render of /chat. Use a production build for UAT and demo recording. UI estimated $0.0508 for one short turn (17k-character system prompt); estimate not checked against DeepSeek billing. Judges will spend the owner's credit, so per-account limits are needed before deploy.
 - 2026-11-04 (slice builder): built move-shift slice. Tables shiftassist_{weeks,staff,slots,rules,assignments} (owner_email on all), `server/lib/assignments.ts` (single write path, uses checkAssignment and repairWeek from lib/solver), actions get-week / move-shift / load-sample-week, `/board` route, view-screen board snapshot. Local PGlite only. See builder report for what is and is not verified. Status unchanged: nothing proven until the director re-runs it.
+- 2026-11-04 (product builder, LOCAL only, not director-verified): built steps 1 to 10 of the journey on the local dev server. New actions: save-setup, propose-rules, confirm-rules and save-rule (needsApproval), delete-rule, build-week, explain-shift, find-cover, apply-cover (needsApproval), publish-week, unpublish-week; move-shift now refuses a locked shift ("This shift is locked. Unlock it first."). Migrations v2 (rule status, flag) and v3 (week pattern, publish token, last change). `loadSchedule` loads confirmed rules only. Public rota is server-rendered at /s/:token (JSON at /api/public/schedule/:token). `frameworkTools.database` is "off" and `codeExecution.production` is "off" in server/plugins/agent-chat.ts. Vitest: server/lib/journey.test.ts (15) plus assignments.test.ts (6) pass; typecheck and agent-native:doctor exit 0. Walked the journey in the browser with a new restaurant and nine messy messages through DeepSeek; local data reset to the sample afterwards. See the builder report for what is NOT verified (production, two real accounts in the browser, usage limits, deploy).

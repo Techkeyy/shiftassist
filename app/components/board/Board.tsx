@@ -9,62 +9,48 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
-import type { WeekView } from "../../../server/lib/week-view";
 import { TAB_ID } from "@/lib/tab-id";
 import { cn } from "@/lib/utils";
+import { BuildPanel } from "./BuildPanel";
+import { btnSecondary, copyText, dayLabel, errText } from "./format";
+import { PublishPanel } from "./PublishPanel";
+import { RulesPanel } from "./RulesPanel";
+import { SetupForm } from "./SetupForm";
+import { ShiftPanel } from "./ShiftPanel";
+import { Welcome } from "./Welcome";
+import { DayList, WeekGrid } from "./WeekGrid";
 
-type SlotView = WeekView["slots"][number];
+type Notice = { kind: "error" | "ok"; text: string };
 
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function dayLabel(date: string): string {
-  const d = new Date(`${date}T00:00:00Z`);
-  return `${DAY_NAMES[d.getUTCDay()]} ${date.slice(5)}`;
+function Section({ id, step, title, children }: { id: string; step: number; title: string; children: React.ReactNode }) {
+  return (
+    <section id={id} aria-labelledby={`${id}-h`} className="scroll-mt-4 space-y-3 rounded-xl border p-3 sm:p-4">
+      <h2 id={`${id}-h`} className="text-base font-semibold">
+        <span className="mr-2 inline-flex size-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">{step}</span>
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
 }
 
-function SlotChip({
-  slot,
-  selected,
-  pending,
-  onSelect,
-}: {
-  slot: SlotView;
-  selected: boolean;
-  pending: boolean;
-  onSelect: () => void;
-}) {
+function PreparedMessage({ message, onDismiss }: { message: string; onDismiss: () => void }) {
+  const [state, setState] = useState<"idle" | "ok" | "fail">("idle");
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      draggable
-      data-testid="shift-chip"
-      data-slot-id={slot.id}
-      aria-pressed={selected}
-      aria-label={`${slot.description}${slot.staffName ? `, ${slot.staffName}` : ", open"}${slot.locked ? ", locked" : ""}`}
-      onDragStart={(e) => {
-        e.dataTransfer.setData("text/plain", slot.id);
-        e.dataTransfer.effectAllowed = "move";
-      }}
-      onClick={onSelect}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSelect();
-        }
-      }}
-      className={cn(
-        "cursor-grab select-none rounded-md border px-2 py-1 text-xs leading-tight active:cursor-grabbing",
-        "bg-card text-card-foreground hover:bg-accent",
-        selected && "ring-2 ring-primary",
-        slot.locked && "border-primary",
-        pending && "opacity-50",
-      )}
-    >
-      <div className="font-medium">{slot.label}</div>
-      <div className="text-muted-foreground">
-        {slot.start}-{slot.end}
-        {slot.locked ? " · locked" : ""}
+    <div data-testid="prepared-message" className="space-y-2 rounded-lg border border-primary p-3">
+      <p className="text-sm font-medium">Message for your cover (copy it and send it yourself; nothing is sent from here)</p>
+      <textarea readOnly aria-label="Prepared message" className="w-full rounded-md border bg-muted/40 p-2 text-sm" rows={4} value={message} onFocus={(e) => e.currentTarget.select()} />
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+          onClick={async () => setState((await copyText(message)) ? "ok" : "fail")}
+        >
+          Copy message
+        </button>
+        <button type="button" className={btnSecondary} onClick={onDismiss}>Done</button>
+        {state === "ok" ? <span role="status" className="text-sm text-muted-foreground">Copied.</span> : null}
+        {state === "fail" ? <span role="alert" className="text-sm text-destructive">Couldn't copy. Select the text and copy it yourself.</span> : null}
       </div>
     </div>
   );
@@ -81,18 +67,33 @@ export function Board() {
     pauseWhenHidden: true,
   });
   const week = useActionQuery("get-week", {});
-  const load = useActionMutation("load-sample-week");
+  const loadSample = useActionMutation("load-sample-week");
   const move = useActionMutation("move-shift");
 
+  const [mode, setMode] = useState<"main" | "setup">("main");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [notice, setNotice] = useState<{ kind: "error" | "ok"; text: string } | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
   const [pendingSlot, setPendingSlot] = useState<string | null>(null);
-  const [overRow, setOverRow] = useState<string | null>(null);
+  const [view, setView] = useState<"grid" | "day">("grid");
+  const [dismissedChange, setDismissedChange] = useState<string | null>(null);
+  const [dismissedMessage, setDismissedMessage] = useState<string | null>(null);
+  const [sampleError, setSampleError] = useState<string | null>(null);
+
+  // Phones and narrow windows get the one-day-at-a-time list; the grid scrolls inside its own box.
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const apply = () => setView(mq.matches ? "day" : "grid");
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
 
   const data = week.data;
-  const selected = useMemo(
-    () => data?.slots.find((s) => s.id === selectedId) ?? null,
-    [data, selectedId],
+  const selected = useMemo(() => data?.slots.find((s) => s.id === selectedId) ?? null, [data, selectedId]);
+  const change = data?.lastChange ?? null;
+  const changedIds = useMemo(
+    () => new Set(change && change.at !== dismissedChange ? change.slotIds : []),
+    [change, dismissedChange],
   );
 
   // Tell the agent which shift is selected (context-awareness: tab-scoped `selection`).
@@ -116,10 +117,7 @@ export function Board() {
   }, [selected]);
   useEffect(
     () => () => {
-      void deleteClientAppState(`selection:${TAB_ID}`, {
-        requestSource: TAB_ID,
-        keepalive: true,
-      });
+      void deleteClientAppState(`selection:${TAB_ID}`, { requestSource: TAB_ID, keepalive: true });
     },
     [],
   );
@@ -131,85 +129,94 @@ export function Board() {
       { slotId, staffId, ...(lock === undefined ? {} : { lock }) },
       {
         onSuccess: (r) => setNotice({ kind: "ok", text: r.message }),
-        onError: (err) =>
-          setNotice({
-            kind: "error",
-            text: actionErrorMessage(err) ?? "Couldn't move that shift. Nothing was changed.",
-          }),
+        onError: (err) => setNotice({ kind: "error", text: errText(err, "Couldn't move that shift. Nothing was changed.") }),
         onSettled: () => setPendingSlot(null),
       },
     );
   }
 
+  function goTo(id: string) {
+    const el = document.getElementById(id);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const focusable = el?.querySelector<HTMLElement>("textarea, button, input, select");
+    focusable?.focus({ preventScroll: true });
+  }
+
   if (week.isLoading) {
-    return <div className="p-6 text-sm text-muted-foreground" role="status">Loading the week...</div>;
+    return <div className="p-6 text-sm text-muted-foreground" role="status">Loading your week...</div>;
   }
   if (week.error) {
     return (
       <div className="p-6" role="alert">
-        <p className="text-sm font-medium">The week couldn't be loaded.</p>
-        <p className="text-sm text-muted-foreground">
-          {actionErrorMessage(week.error) ?? "Check your connection and try again."}
-        </p>
-        <button
-          type="button"
-          className="mt-3 rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
-          onClick={() => void week.refetch()}
-        >
-          Try again
-        </button>
-      </div>
-    );
-  }
-  if (!data || !data.hasWeek) {
-    return (
-      <div className="mx-auto max-w-md p-10 text-center">
-        <h1 className="text-lg font-semibold">No week yet</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Start with a labelled sample restaurant to see how the board works. It isn't your data.
-        </p>
-        <button
-          type="button"
-          disabled={load.isPending}
-          onClick={() =>
-            load.mutate(
-              {},
-              {
-                onError: (err) =>
-                  setNotice({
-                    kind: "error",
-                    text: actionErrorMessage(err) ?? "Couldn't load the sample.",
-                  }),
-              },
-            )
-          }
-          className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
-        >
-          {load.isPending ? "Loading..." : "Try the sample restaurant"}
-        </button>
-        {notice ? (
-          <p role="alert" className="mt-3 text-sm text-destructive">{notice.text}</p>
-        ) : null}
+        <p className="text-sm font-medium">Your week couldn't be loaded.</p>
+        <p className="text-sm text-muted-foreground">{actionErrorMessage(week.error) ?? "Check your connection and try again."}</p>
+        <button type="button" className={`${btnSecondary} mt-3`} onClick={() => void week.refetch()}>Try again</button>
       </div>
     );
   }
 
-  const dates = Array.from(new Set(data.slots.map((s) => s.date))).sort();
-  const cell = (staffId: string | null, date: string) =>
-    data.slots.filter((s) => s.staffId === staffId && s.date === date);
-  const openSlots = data.slots.filter((s) => !s.staffId);
+  if (!data || !data.hasWeek) {
+    if (mode === "setup") {
+      return <SetupForm existing={null} onCancel={() => setMode("main")} onDone={() => setMode("main")} />;
+    }
+    return (
+      <Welcome
+        loadingSample={loadSample.isPending}
+        error={sampleError}
+        onSetup={() => setMode("setup")}
+        onSample={() => {
+          setSampleError(null);
+          loadSample.mutate({}, { onError: (err) => setSampleError(errText(err, "Couldn't load the sample restaurant.")) });
+        }}
+      />
+    );
+  }
+
+  if (mode === "setup") {
+    return (
+      <SetupForm
+        existing={data}
+        onCancel={() => setMode("main")}
+        onDone={() => {
+          setMode("main");
+          setSelectedId(null);
+        }}
+      />
+    );
+  }
+
+  const proposedCount = data.rules.filter((r) => r.status === "proposed").length;
+  const hasCoverMessage = change?.kind === "cover" && change.message && dismissedMessage !== change.at;
+  const next = {
+    rules: { text: "Next: paste your staff's messages so ShiftAssist can find their rules.", button: "Go to messages", target: "sec-rules" },
+    confirm: { text: `Next: check ${proposedCount} rule${proposedCount === 1 ? "" : "s"} and confirm the ones that are right.`, button: "Go to the rules", target: "sec-rules" },
+    build: { text: "Next: build the week.", button: "Go to Build week", target: "sec-week" },
+    publish: { text: "Next: publish the week so your staff can see it on their phones.", button: "Go to Publish", target: "sec-share" },
+    done: { text: "All set. If someone can't make a shift, click that shift and choose \"Someone can't make it\".", button: "", target: "" },
+    setup: { text: "", button: "", target: "" },
+  }[data.nextStep];
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-4">
-      <div className="flex flex-wrap items-baseline gap-x-3">
+    <div className="mx-auto w-full min-w-0 max-w-full space-y-4 p-3 sm:p-4" data-testid="week-page">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <h1 className="text-lg font-semibold">{data.week?.name}</h1>
-        {data.week?.isSample ? (
-          <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium">Sample data</span>
-        ) : null}
-        <span className="text-xs text-muted-foreground">
-          Week of {data.week?.startDate}. Drag a shift onto another person's row.
-        </span>
+        {data.week?.isSample ? <span className="rounded bg-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-950">SAMPLE data</span> : null}
+        <span className="text-xs text-muted-foreground">Week of {dayLabel(data.week!.startDate)}</span>
+        <button type="button" className="ml-auto text-sm underline" onClick={() => setMode("setup")}>
+          {data.week?.isSample ? "Set up my own restaurant" : "Edit staff and shifts"}
+        </button>
       </div>
+
+      {next.text ? (
+        <div role="status" data-testid="next-step" className="flex flex-wrap items-center gap-3 rounded-lg bg-primary/10 px-3 py-2 text-sm">
+          <span className="font-medium">{next.text}</span>
+          {next.button ? (
+            <button type="button" className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground" onClick={() => goTo(next.target)}>
+              {next.button}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {notice ? (
         <div
@@ -217,134 +224,71 @@ export function Board() {
           data-testid="board-notice"
           className={cn(
             "flex items-start justify-between gap-3 rounded-md border px-3 py-2 text-sm",
-            notice.kind === "error"
-              ? "border-destructive text-destructive"
-              : "text-muted-foreground",
+            notice.kind === "error" ? "border-destructive text-destructive" : "text-foreground",
           )}
         >
           <span>{notice.text}</span>
-          <button type="button" className="text-xs underline" onClick={() => setNotice(null)}>
-            Dismiss
-          </button>
+          <button type="button" className="shrink-0 text-xs underline" onClick={() => setNotice(null)}>Dismiss</button>
         </div>
       ) : null}
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] border-separate border-spacing-1 text-left">
-          <thead>
-            <tr>
-              <th className="w-28 text-xs font-medium text-muted-foreground">Staff</th>
-              {dates.map((d) => (
-                <th key={d} className="text-xs font-medium text-muted-foreground">
-                  {dayLabel(d)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {data.staff.map((p) => (
-              <tr key={p.id} data-testid="staff-row" data-staff-id={p.id}>
-                <th className="align-top text-sm font-medium">
-                  <div>{p.name}</div>
-                  <div className="text-xs font-normal text-muted-foreground">
-                    {p.roles.join(", ")} · {p.shiftCount}/{p.maxShifts}
-                  </div>
-                </th>
-                {dates.map((d) => (
-                  <td
-                    key={d}
-                    data-testid="board-cell"
-                    data-staff-id={p.id}
-                    data-date={d}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = "move";
-                      setOverRow(p.id);
-                    }}
-                    onDragLeave={() => setOverRow((r) => (r === p.id ? null : r))}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setOverRow(null);
-                      const slotId = e.dataTransfer.getData("text/plain");
-                      if (slotId) doMove(slotId, p.id);
-                    }}
-                    className={cn(
-                      "h-14 min-w-24 align-top rounded-md border border-dashed p-1",
-                      overRow === p.id && "bg-accent",
-                    )}
-                  >
-                    <div className="flex flex-col gap-1">
-                      {cell(p.id, d).map((s) => (
-                        <SlotChip
-                          key={s.id}
-                          slot={s}
-                          selected={s.id === selectedId}
-                          pending={pendingSlot === s.id}
-                          onSelect={() => setSelectedId(s.id === selectedId ? null : s.id)}
-                        />
-                      ))}
-                    </div>
-                  </td>
-                ))}
-              </tr>
-            ))}
-            {openSlots.length ? (
-              <tr data-testid="open-row">
-                <th className="align-top text-sm font-medium">Open shifts</th>
-                {dates.map((d) => (
-                  <td key={d} className="align-top rounded-md border border-dashed p-1">
-                    <div className="flex flex-col gap-1">
-                      {cell(null, d).map((s) => (
-                        <SlotChip
-                          key={s.id}
-                          slot={s}
-                          selected={s.id === selectedId}
-                          pending={pendingSlot === s.id}
-                          onSelect={() => setSelectedId(s.id === selectedId ? null : s.id)}
-                        />
-                      ))}
-                    </div>
-                  </td>
-                ))}
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+      {hasCoverMessage ? <PreparedMessage message={change!.message!} onDismiss={() => setDismissedMessage(change!.at)} /> : null}
 
-      <div className="rounded-md border p-3 text-sm" data-testid="selected-shift">
-        {selected ? (
-          <div className="flex flex-wrap items-center gap-3">
+      <Section id="sec-rules" step={1} title="Staff messages and rules">
+        <RulesPanel week={data} />
+      </Section>
+
+      <Section id="sec-week" step={2} title="Build and adjust the week">
+        <BuildPanel week={data} onSelectSlot={(id) => setSelectedId(id)} />
+        {changedIds.size > 0 && change ? (
+          <div data-testid="change-banner" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500 bg-amber-50 px-3 py-2 text-sm dark:bg-amber-950/40">
             <span>
-              <strong>{selected.description}</strong> ·{" "}
-              {selected.staffName ? `worked by ${selected.staffName}` : "open"}
-              {selected.locked ? " · locked" : ""}
+              <strong>{changedIds.size} shift{changedIds.size === 1 ? "" : "s"} changed</strong> and highlighted below. {change.summary}
             </span>
-            {selected.staffId ? (
-              <button
-                type="button"
-                className="rounded-md border px-2 py-1 text-xs hover:bg-accent"
-                onClick={() => doMove(selected.id, selected.staffId!, !selected.locked)}
-              >
-                {selected.locked ? "Unlock" : "Lock to " + selected.staffName}
-              </button>
-            ) : null}
+            <button type="button" className="text-xs underline" onClick={() => setDismissedChange(change.at)}>Clear highlights</button>
           </div>
+        ) : null}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">
+            Click a shift to see why. Drag it onto another person, or use "Move to..." in the shift details.
+          </p>
+          <div role="group" aria-label="Board view" className="flex overflow-hidden rounded-md border text-sm">
+            <button type="button" aria-pressed={view === "grid"} className={cn("px-3 py-1", view === "grid" && "bg-primary text-primary-foreground")} onClick={() => setView("grid")}>Week grid</button>
+            <button type="button" aria-pressed={view === "day"} className={cn("px-3 py-1", view === "day" && "bg-primary text-primary-foreground")} onClick={() => setView("day")}>By day</button>
+          </div>
+        </div>
+        {view === "grid" ? (
+          <WeekGrid
+            week={data}
+            selectedId={selectedId}
+            changedIds={changedIds}
+            pendingSlot={pendingSlot}
+            onSelect={setSelectedId}
+            onDropTo={(slotId, staffId) => doMove(slotId, staffId)}
+          />
         ) : (
-          <span className="text-muted-foreground">Click a shift to select it. The assistant can see which one.</span>
+          <DayList week={data} selectedId={selectedId} changedIds={changedIds} pendingSlot={pendingSlot} onSelect={setSelectedId} />
         )}
-      </div>
+        {selected ? (
+          <ShiftPanel
+            key={selected.id}
+            slot={selected}
+            week={data}
+            moving={move.isPending}
+            onClose={() => setSelectedId(null)}
+            onMove={(staffId, lock) => doMove(selected.id, staffId, lock)}
+            onNotice={setNotice}
+          />
+        ) : (
+          <p className="rounded-lg border p-3 text-sm text-muted-foreground" data-testid="selected-shift">
+            Click a shift to see why that person has it, lock it, move it, or cover it. Your assistant can see which one you picked.
+          </p>
+        )}
+      </Section>
 
-      <details className="text-sm">
-        <summary className="cursor-pointer text-muted-foreground">Confirmed rules ({data.rules.length})</summary>
-        <ul className="mt-2 list-disc pl-5">
-          {data.rules.map((r) => (
-            <li key={r.id}>
-              {r.text} <span className="text-xs text-muted-foreground">({r.severity})</span>
-            </li>
-          ))}
-        </ul>
-      </details>
+      <Section id="sec-share" step={3} title="Share with your staff">
+        <PublishPanel week={data} />
+      </Section>
     </div>
   );
 }

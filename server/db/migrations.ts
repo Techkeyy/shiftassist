@@ -55,6 +55,25 @@ export const migrations: MigrationEntry[] = [
       CREATE UNIQUE INDEX IF NOT EXISTS shiftassist_assignments_owner_slot_uq ON shiftassist_assignments (owner_email, slot_id);
     `,
   },
+  {
+    version: 2,
+    name: "shiftassist-rule-status",
+    sql: `
+      ALTER TABLE shiftassist_rules ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'confirmed';
+      ALTER TABLE shiftassist_rules ADD COLUMN IF NOT EXISTS flag TEXT;
+    `,
+  },
+  {
+    version: 3,
+    name: "shiftassist-week-setup-publish-lastchange",
+    sql: `
+      ALTER TABLE shiftassist_weeks ADD COLUMN IF NOT EXISTS pattern TEXT;
+      ALTER TABLE shiftassist_weeks ADD COLUMN IF NOT EXISTS published_token TEXT;
+      ALTER TABLE shiftassist_weeks ADD COLUMN IF NOT EXISTS published_at TEXT;
+      ALTER TABLE shiftassist_weeks ADD COLUMN IF NOT EXISTS last_change TEXT;
+      CREATE UNIQUE INDEX IF NOT EXISTS shiftassist_weeks_token_uq ON shiftassist_weeks (published_token);
+    `,
+  },
 ];
 
 export const MIGRATIONS_TABLE = "shiftassist_migrations";
