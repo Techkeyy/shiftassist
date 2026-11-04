@@ -46,6 +46,7 @@ Staff rota app for small restaurants. The week page is `/board` ("Week" in the s
 | `build-week` | Solve the week from confirmed rules, keeping locked shifts. Returns filled count, true reasons for unfilled shifts, fairness. |
 | `move-shift` | `{ slotId, staffId, lock? }`. The only single-shift write. Re-checks hard rules; a locked shift cannot go to someone else ("This shift is locked. Unlock it first."). |
 | `explain-shift` | Engine reasons, who else could have had the shift and what blocks them. |
+| `slot-eligibility` | Read-only. Per shift, which other people could take it and the engine's reason for each who can't. Drives the board's allowed and blocked cells. |
 | `find-cover`, `apply-cover` | Sick day. `find-cover` ranks options; `apply-cover` (`needsApproval`) makes the swap, marks the absent person off that date with a confirmed rule, and returns a message to copy. Nothing is sent. |
 | `publish-week`, `unpublish-week` | Create / kill the unguessable public link. |
 | `load-sample-week` | Labelled SAMPLE restaurant, with example staff messages. Refuses if a week exists unless `replace: true`. |

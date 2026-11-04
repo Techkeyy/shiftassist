@@ -3,27 +3,45 @@ import { useState } from "react";
 
 import type { BuildResult } from "../../../server/lib/assignments";
 import type { WeekView } from "../../../server/lib/week-view";
+import { Tally } from "./art";
 import { btnPrimary, btnSecondary, errText } from "./format";
 
+/** Fairness at a glance: closes and weekend shifts as tally marks, a dotted line for the team average. All from the engine. */
 export function FairnessStrip({ fairness }: { fairness: NonNullable<WeekView["fairness"]> }) {
   const a = fairness.averages;
+  const maxCloses = Math.max(...fairness.people.map((p) => p.closes), 0);
+  const maxWeekends = Math.max(...fairness.people.map((p) => p.weekends), 0);
   return (
-    <div data-testid="fairness" className="space-y-2">
-      <h3 className="text-sm font-medium">Fairness this week</h3>
-      <ul className="flex flex-wrap gap-2" aria-label="Shifts, closes and weekends per person">
-        {fairness.people.map((p) => (
-          <li key={p.staffId} className="rounded-md border px-2 py-1 text-xs" data-testid="fairness-person">
-            <strong className="text-sm">{p.name}</strong>
-            <div className="text-muted-foreground">
-              {p.shifts} shifts · {p.closes} closes · {p.weekends} weekend
-            </div>
-          </li>
-        ))}
-      </ul>
-      <p className="text-xs text-muted-foreground">
-        Team average: {a.shifts.toFixed(1)} shifts, {a.closes.toFixed(1)} closes, {a.weekends.toFixed(1)} weekend shifts. A "close" is a shift that ends at 22:00 or later. Figures come from the scheduling engine.
+    <section data-testid="fairness" aria-labelledby="tally-h" className="space-y-1">
+      <h3 id="tally-h" className="section-title">Fairness this week</h3>
+      <p className="hint">
+        A close is a shift that ends at 22:00 or later. The dotted line is the team average (
+        <span className="mono">{a.closes.toFixed(1)}</span> closes, <span className="mono">{a.weekends.toFixed(1)}</span> weekend shifts). Figures come from the scheduling engine.
       </p>
-    </div>
+      <div role="list" aria-label="Closes and weekend shifts per person" className="mt-2">
+        <div className="tally-row hint" aria-hidden="true" style={{ borderTop: 0, paddingBottom: 0 }}>
+          <span>Person</span>
+          <span>Closes</span>
+          <span>Weekend shifts</span>
+        </div>
+        {fairness.people.map((p) => (
+          <div key={p.staffId} role="listitem" className="tally-row" data-testid="fairness-person">
+            <span>
+              <strong className="display text-base">{p.name}</strong>
+              <span className="hint mono block">{p.shifts} shifts</span>
+            </span>
+            <span className="tally-marks">
+              <Tally count={p.closes} average={a.closes} max={maxCloses} label={`${p.name}, closes`} />
+              <span className="mono text-sm">{p.closes}</span>
+            </span>
+            <span className="tally-marks">
+              <Tally count={p.weekends} average={a.weekends} max={maxWeekends} label={`${p.name}, weekend shifts`} />
+              <span className="mono text-sm">{p.weekends}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -60,7 +78,7 @@ export function BuildPanel({
       <div className="flex flex-wrap items-center gap-2">
         {confirming ? (
           <>
-            <span className="text-sm">Building again replaces every shift that isn't locked.</span>
+            <span className="text-[0.9375rem]">Building again replaces every shift that isn't locked.</span>
             <button type="button" className={btnPrimary} onClick={run}>Yes, rebuild</button>
             <button type="button" className={btnSecondary} onClick={() => setConfirming(false)}>No, keep it</button>
           </>
@@ -75,22 +93,22 @@ export function BuildPanel({
             {build.isPending ? "Building the week..." : placed > 0 ? "Build week again" : "Build week"}
           </button>
         )}
+        {proposedWaiting > 0 ? (
+          <span role="status" className="hint">
+            {proposedWaiting} rule{proposedWaiting === 1 ? " is" : "s are"} still waiting for your confirmation and will not be used.
+          </span>
+        ) : null}
       </div>
-      {proposedWaiting > 0 ? (
-        <p role="status" className="text-sm text-amber-900 dark:text-amber-200">
-          {proposedWaiting} rule{proposedWaiting === 1 ? " is" : "s are"} still waiting for your confirmation and will not be used.
-        </p>
-      ) : null}
-      {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+      {error ? <p role="alert" className="problem-line">{error}</p> : null}
 
       {result ? (
-        <div role="status" data-testid="build-result" className="space-y-2 rounded-lg border p-3 text-sm">
+        <div role="status" data-testid="build-result" className="space-y-2 border-l-4 pl-3 text-[0.9375rem]" style={{ borderColor: "hsl(var(--foreground))" }}>
           <p className="font-medium">
-            Filled {result.filled} of {result.total} shifts.
+            Filled <span className="mono">{result.filled}</span> of <span className="mono">{result.total}</span> shifts.
             {result.lockedKept ? ` ${result.lockedKept} locked shift(s) kept.` : ""}
           </p>
           {result.lockedProblems.length ? (
-            <ul className="list-disc pl-5 text-amber-900 dark:text-amber-200">
+            <ul className="list-disc pl-5" style={{ color: "hsl(var(--problem))" }}>
               {result.lockedProblems.map((p) => (
                 <li key={p.slotId}>
                   Locked {p.description} breaks a rule: {p.problems.join(" ")}
@@ -100,14 +118,16 @@ export function BuildPanel({
           ) : null}
           {result.unfilled.length ? (
             <div>
-              <p className="font-medium">{result.unfilled.length} shift{result.unfilled.length === 1 ? "" : "s"} could not be filled:</p>
+              <p className="problem-line">
+                {result.unfilled.length} shift{result.unfilled.length === 1 ? "" : "s"} could not be filled:
+              </p>
               <ul className="mt-1 space-y-2">
                 {result.unfilled.map((u) => (
                   <li key={u.slotId} data-testid="unfilled-shift">
-                    <button type="button" className="font-medium underline" onClick={() => onSelectSlot(u.slotId)}>
+                    <button type="button" className="link font-medium" onClick={() => onSelectSlot(u.slotId)}>
                       {u.description}
                     </button>
-                    <ul className="list-disc pl-5 text-xs text-muted-foreground">
+                    <ul className="hint list-disc pl-5">
                       {u.reasons.map((r, i) => (
                         <li key={i}>{r}</li>
                       ))}
@@ -121,12 +141,10 @@ export function BuildPanel({
           )}
         </div>
       ) : unfilledNow.length > 0 && placed > 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {unfilledNow.length} shift{unfilledNow.length === 1 ? " is" : "s are"} open. Click an open shift on the board to see why.
+        <p className="hint">
+          {unfilledNow.length} shift{unfilledNow.length === 1 ? " is" : "s are"} open. Click an open shift on the sheet to see why.
         </p>
       ) : null}
-
-      {week.fairness ? <FairnessStrip fairness={week.fairness} /> : null}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { sendToAgentChatAndConfirm } from "@agent-native/core/client/agent-chat"
 import { useEffect, useRef, useState } from "react";
 
 import type { WeekView } from "../../../server/lib/week-view";
+import { Clip, RailBar, Stamp, Zig } from "./art";
 import { btnDanger, btnPrimary, btnSecondary, errText, inputCls } from "./format";
 
 type Card = WeekView["rules"][number];
@@ -15,15 +16,36 @@ const DAY_LABELS: [string, number][] = [
 
 function Badge({ severity }: { severity: "hard" | "soft" }) {
   return (
-    <span
-      className={
-        severity === "hard"
-          ? "rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-900 dark:bg-red-950 dark:text-red-200"
-          : "rounded bg-sky-100 px-1.5 py-0.5 text-xs font-medium text-sky-900 dark:bg-sky-950 dark:text-sky-200"
-      }
-    >
+    <span className="mono border px-1.5 text-sm" style={{ borderColor: "hsl(var(--rule-strong))" }}>
       {severity === "hard" ? "Must" : "Preference"}
     </span>
+  );
+}
+
+function ProblemMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" className="mt-0.5 shrink-0">
+      <path d="M9 2 17 16H1z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M9 7v4.5M9 13.5v.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Example drawing only: an empty rail with open clips. Shown when there are no rules at all. */
+function EmptyRail() {
+  return (
+    <figure className="space-y-2">
+      <svg viewBox="0 0 320 70" width="100%" height="70" role="img" aria-label="Example drawing: an empty rail with open clips" style={{ maxWidth: 360 }}>
+        <rect x="4" y="12" width="312" height="7" rx="3.5" fill="hsl(var(--foreground))" />
+        {[56, 128, 200, 272].map((x) => (
+          <g key={x} transform={`translate(${x - 8} 14)`} color="hsl(var(--foreground))">
+            <path d="M2 1.5h12v8a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 9.5z" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M5 13.5l-2.5 7M11 13.5l2.5 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </g>
+        ))}
+      </svg>
+      <figcaption className="hint">No rules yet. Paste your staff's messages. (Example drawing.)</figcaption>
+    </figure>
   );
 }
 
@@ -128,13 +150,13 @@ ${body}
 
   return (
     <div className="space-y-2">
-      <label htmlFor="paste-box" className="block text-sm font-medium">
+      <label htmlFor="paste-box" className="field-label">
         Paste staff messages
       </label>
       <textarea
         id="paste-box"
         data-testid="paste-box"
-        className={`${inputCls} min-h-28`}
+        className={`${inputCls} min-h-32`}
         maxLength={MAX_PASTE}
         placeholder={"Paste texts or notes from your staff, one after another.\nFor example: \"Maya: can't do Fridays, school pickup\""}
         value={text}
@@ -154,19 +176,19 @@ ${body}
             </button>
           </>
         ) : null}
-        <span className="text-xs text-muted-foreground">
+        <span className="hint mono">
           {text.length}/{MAX_PASTE}
         </span>
       </div>
-      {limitMsg ? <p role="alert" className="text-sm text-amber-900 dark:text-amber-200">{limitMsg}</p> : null}
+      {limitMsg ? <p role="alert" className="problem-line">{limitMsg}</p> : null}
       {failed ? (
         <div role="alert" className="space-y-2 text-sm">
-          <p className="text-destructive">{failed}</p>
+          <p className="problem-line"><ProblemMark />{failed}</p>
           <button type="button" className={btnSecondary} onClick={onAddByHand}>Add a rule by hand</button>
         </div>
       ) : null}
       {sentAt !== null ? (
-        <p role="status" className="text-sm text-muted-foreground">
+        <p role="status" className="hint">
           Sent to your assistant in the chat panel. Rule cards will appear here for you to check; nothing is used until you confirm it.
           {slow ? " This is taking a while. Check the chat to see what the assistant says." : ""}
         </p>
@@ -180,11 +202,15 @@ function NoteCardView({ card, week, onError }: { card: Card; week: WeekView; onE
   const del = useActionMutation("delete-rule");
   if (editing) return <RuleEditor card={card} week={week} onClose={() => setEditing(false)} />;
   return (
-    <li data-testid="note-card" className="rounded-lg border border-amber-500 bg-amber-50 p-3 dark:bg-amber-950/30">
-      <span className="rounded bg-amber-200 px-1.5 py-0.5 text-xs font-medium text-amber-950">Not a rule</span>
-      {card.source ? <p className="mt-1 text-sm font-medium">"{card.source}"</p> : null}
-      {card.text && card.text !== card.source ? <p className="mt-1 text-xs text-muted-foreground">{card.text}</p> : null}
-      <p className="mt-1 text-xs text-muted-foreground">Kept as a note. It does not change the schedule.</p>
+    <li data-testid="note-card" className="ticket" data-note="true" data-attention="true">
+      <Clip className="ticket-clip" />
+      <p className="problem-line">
+        <ProblemMark />
+        Needs your eye: not a rule
+      </p>
+      {card.source ? <p className="ticket-source">"{card.source}"</p> : null}
+      {card.text && card.text !== card.source ? <p className="hint mt-1">{card.text}</p> : null}
+      <p className="hint mt-1">Kept as a note. It does not change the schedule.</p>
       <div className="mt-2 flex flex-wrap gap-2">
         <button type="button" className={btnSecondary} onClick={() => setEditing(true)}>Turn into a rule</button>
         <button
@@ -196,6 +222,7 @@ function NoteCardView({ card, week, onError }: { card: Card; week: WeekView; onE
           {del.isPending ? "Dismissing..." : "Dismiss"}
         </button>
       </div>
+      <Zig />
     </li>
   );
 }
@@ -259,10 +286,10 @@ function RuleEditor({ card, week, onClose }: { card: Card | null; week: WeekView
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3 rounded-lg border bg-muted/30 p-3" aria-label={card ? "Edit rule" : "Add a rule"}>
-      <h3 className="text-sm font-medium">{card ? "Edit this rule" : "Add a rule by hand"}</h3>
+    <form onSubmit={submit} className="ticket space-y-3" aria-label={card ? "Edit rule" : "Add a rule"}>
+      <h3 className="section-title">{card ? "Edit this rule" : "Add a rule by hand"}</h3>
       <div className="grid gap-2 sm:grid-cols-3">
-        <label className="text-xs">
+        <label className="field-label">
           Who
           <select className={inputCls} value={f.staffId} onChange={(e) => set("staffId", e.target.value)} aria-label="Who is this rule for">
             {!card?.staffId ? <option value="">Choose a person...</option> : null}
@@ -271,7 +298,7 @@ function RuleEditor({ card, week, onClose }: { card: Card | null; week: WeekView
             ))}
           </select>
         </label>
-        <label className="text-xs">
+        <label className="field-label">
           What
           <select className={inputCls} value={f.kind} onChange={(e) => set("kind", e.target.value as typeof f.kind)} aria-label="Kind of rule">
             <option value="unavailable">Can't work certain days or times</option>
@@ -280,7 +307,7 @@ function RuleEditor({ card, week, onClose }: { card: Card | null; week: WeekView
             <option value="min_rest">Rest between shifts</option>
           </select>
         </label>
-        <label className="text-xs">
+        <label className="field-label">
           How strict
           <select className={inputCls} value={f.severity} onChange={(e) => set("severity", e.target.value as "hard" | "soft")} aria-label="How strict">
             <option value="hard">Must (never broken)</option>
@@ -304,31 +331,32 @@ function RuleEditor({ card, week, onClose }: { card: Card | null; week: WeekView
             ))}
           </div>
           <div className="grid gap-2 sm:grid-cols-4">
-            <label className="text-xs">From date<input type="date" className={inputCls} value={f.from} onChange={(e) => set("from", e.target.value)} /></label>
-            <label className="text-xs">Until date<input type="date" className={inputCls} value={f.until} onChange={(e) => set("until", e.target.value)} /></label>
-            <label className="text-xs">Not after<input type="time" className={inputCls} value={f.afterTime} onChange={(e) => set("afterTime", e.target.value)} /></label>
-            <label className="text-xs">Not before<input type="time" className={inputCls} value={f.beforeTime} onChange={(e) => set("beforeTime", e.target.value)} /></label>
+            <label className="field-label">From date<input type="date" className={inputCls} value={f.from} onChange={(e) => set("from", e.target.value)} /></label>
+            <label className="field-label">Until date<input type="date" className={inputCls} value={f.until} onChange={(e) => set("until", e.target.value)} /></label>
+            <label className="field-label">Not after<input type="time" className={inputCls} value={f.afterTime} onChange={(e) => set("afterTime", e.target.value)} /></label>
+            <label className="field-label">Not before<input type="time" className={inputCls} value={f.beforeTime} onChange={(e) => set("beforeTime", e.target.value)} /></label>
           </div>
-          <p className="text-xs text-muted-foreground">Leave days and dates empty to apply to every day. For a single day, set the same date in both date boxes.</p>
+          <p className="hint">Leave days and dates empty to apply to every day. For a single day, set the same date in both date boxes.</p>
         </div>
       ) : null}
       {f.kind === "max_shifts" ? (
-        <label className="block text-xs">Most shifts this week<input className={`${inputCls} max-w-32`} inputMode="numeric" value={f.max} onChange={(e) => set("max", e.target.value)} /></label>
+        <label className="field-label block">Most shifts this week<input className={`${inputCls} max-w-32`} inputMode="numeric" value={f.max} onChange={(e) => set("max", e.target.value)} /></label>
       ) : null}
       {f.kind === "min_rest" ? (
-        <label className="block text-xs">Least hours between shifts<input className={`${inputCls} max-w-32`} inputMode="numeric" value={f.hours} onChange={(e) => set("hours", e.target.value)} /></label>
+        <label className="field-label block">Least hours between shifts<input className={`${inputCls} max-w-32`} inputMode="numeric" value={f.hours} onChange={(e) => set("hours", e.target.value)} /></label>
       ) : null}
-      <label className="block text-xs">
+      <label className="field-label block">
         Note (optional)
         <input className={inputCls} value={f.source} maxLength={500} onChange={(e) => set("source", e.target.value)} />
       </label>
-      {problem ? <p role="alert" className="text-sm text-destructive">{problem}</p> : null}
+      {problem ? <p role="alert" className="problem-line"><ProblemMark />{problem}</p> : null}
       <div className="flex gap-2">
         <button type="submit" className={btnPrimary} disabled={save.isPending}>
           {save.isPending ? "Saving..." : card?.status === "proposed" ? "Save and confirm" : "Save rule"}
         </button>
         <button type="button" className={btnSecondary} onClick={onClose}>Cancel</button>
       </div>
+      <Zig />
     </form>
   );
 }
@@ -337,10 +365,16 @@ function RuleCardView({
   card,
   week,
   onError,
+  no,
+  fresh,
+  index,
 }: {
   card: Card;
   week: WeekView;
   onError: (m: string) => void;
+  no: number;
+  fresh?: boolean;
+  index?: number;
 }) {
   const [editing, setEditing] = useState(false);
   const confirm = useActionMutation("confirm-rules");
@@ -352,16 +386,25 @@ function RuleCardView({
   return (
     <li
       data-testid={proposed ? "rule-card-proposed" : "rule-card-confirmed"}
-      className={`rounded-lg border p-3 ${needsAttention ? "border-amber-500 bg-amber-50 dark:bg-amber-950/30" : ""}`}
+      className="ticket ticket-enter"
+      data-attention={needsAttention ? "true" : undefined}
+      style={{ ["--i" as string]: index ?? 0 }}
     >
+      <Clip className="ticket-clip" />
+      {!proposed ? <Stamp fresh={fresh} index={index ?? 0} /> : null}
       <div className="flex flex-wrap items-center gap-2">
+        <span className="ticket-no">No. {String(no).padStart(2, "0")}</span>
         <Badge severity={card.severity} />
-        {proposed ? <span className="text-xs text-muted-foreground">Waiting for you</span> : <span className="text-xs text-muted-foreground">In use</span>}
-        {needsAttention ? <span className="rounded bg-amber-200 px-1.5 py-0.5 text-xs font-medium text-amber-950">Needs a person</span> : null}
+        <span className="hint">{proposed ? "Waiting for you" : "In use"}</span>
       </div>
-      <p className="mt-1 text-sm font-medium">{card.text}</p>
-      {card.source ? <p className="mt-1 text-xs text-muted-foreground">They wrote: "{card.source}"</p> : null}
-      {card.flag ? <p className="mt-1 text-xs text-amber-900 dark:text-amber-200">{card.flag}</p> : null}
+      {card.source ? <p className="ticket-source">"{card.source}"</p> : null}
+      <p className="ticket-rule">{card.text}</p>
+      {needsAttention ? (
+        <p className="problem-line mt-1">
+          <ProblemMark />
+          <span>Needs a person.{card.flag ? ` ${card.flag}` : ""}</span>
+        </p>
+      ) : null}
       <div className="mt-2 flex flex-wrap gap-2">
         {proposed ? (
           <button
@@ -388,6 +431,7 @@ function RuleCardView({
           {del.isPending ? "Deleting..." : "Delete"}
         </button>
       </div>
+      <Zig />
     </li>
   );
 }
@@ -401,21 +445,30 @@ export function RulesPanel({ week }: { week: WeekView }) {
   const proposed = week.rules.filter((r) => r.status === "proposed" && r.kind !== "note");
   const confirmed = week.rules.filter((r) => r.status === "confirmed" && r.kind !== "note");
   const ready = proposed.filter((r) => !r.flag && r.staffId);
+  // A card that was waiting while this panel was open and is now confirmed was stamped just now.
+  const seenProposed = useRef(new Set<string>());
+  for (const r of proposed) seenProposed.current.add(r.id);
+  const stampedNow = confirmed.filter((r) => seenProposed.current.has(r.id));
+  const earlier = confirmed.filter((r) => !seenProposed.current.has(r.id));
+  const noOf = (id: string) => week.rules.findIndex((r) => r.id === id) + 1;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <PasteBox week={week} onAddByHand={() => setAdding(true)} />
 
       {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}{" "}
-          <button type="button" className="underline" onClick={() => setError(null)}>Dismiss</button>
+        <p role="alert" className="problem-line">
+          <ProblemMark />
+          <span>
+            {error}{" "}
+            <button type="button" className="link" onClick={() => setError(null)}>Dismiss</button>
+          </span>
         </p>
       ) : null}
 
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-medium">Rules to check ({proposed.length})</h3>
+          <h3 className="section-title">Rules to check <span className="mono text-base">({proposed.length})</span></h3>
           {ready.length > 0 ? (
             <button
               type="button"
@@ -429,43 +482,59 @@ export function RulesPanel({ week }: { week: WeekView }) {
             </button>
           ) : null}
         </div>
-        {proposed.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Nothing waiting. Paste messages above and the rules your assistant finds will show up here for you to confirm.
-          </p>
+        {proposed.length === 0 && stampedNow.length === 0 ? (
+          confirmed.length === 0 && notes.length === 0 ? (
+            <div className="mt-3">
+              <EmptyRail />
+            </div>
+          ) : (
+            <p className="hint mt-2">Nothing waiting. Paste messages above and the rules your assistant finds will show up here for you to confirm.</p>
+          )
         ) : (
-          <ul className="mt-2 space-y-2" aria-label="Proposed rules">
-            {proposed.map((c) => (
-              <RuleCardView key={c.id} card={c} week={week} onError={setError} />
-            ))}
-          </ul>
+          <div className="rail-wrap mt-2">
+            <RailBar />
+            <ul aria-label="Proposed rules">
+              {proposed.map((c, i) => (
+                <RuleCardView key={c.id} card={c} week={week} onError={setError} no={noOf(c.id)} index={i} />
+              ))}
+              {stampedNow.map((c, i) => (
+                <RuleCardView key={c.id} card={c} week={week} onError={setError} no={noOf(c.id)} fresh index={i} />
+              ))}
+            </ul>
+          </div>
         )}
       </div>
 
       {notes.length > 0 ? (
         <div>
-          <h3 className="text-sm font-medium">Needs your eye ({notes.length})</h3>
-          <ul className="mt-2 space-y-2" aria-label="Notes that are not rules">
-            {notes.map((c) => (
-              <NoteCardView key={c.id} card={c} week={week} onError={setError} />
-            ))}
-          </ul>
+          <h3 className="section-title">Needs your eye <span className="mono text-base">({notes.length})</span></h3>
+          <div className="rail-wrap mt-2">
+            <RailBar />
+            <ul aria-label="Notes that are not rules">
+              {notes.map((c) => (
+                <NoteCardView key={c.id} card={c} week={week} onError={setError} />
+              ))}
+            </ul>
+          </div>
         </div>
       ) : null}
 
       <div>
-        <button type="button" className="text-sm underline" onClick={() => setShowConfirmed((v) => !v)} aria-expanded={showConfirmed}>
-          {showConfirmed ? "Hide" : "Show"} rules in use ({confirmed.length})
+        <button type="button" className="link" onClick={() => setShowConfirmed((v) => !v)} aria-expanded={showConfirmed}>
+          {showConfirmed ? "Hide" : "Show"} rules in use ({earlier.length})
         </button>
         {showConfirmed ? (
-          confirmed.length === 0 ? (
-            <p className="mt-2 text-sm text-muted-foreground">No confirmed rules yet. The week will be built with only the basic limits.</p>
+          earlier.length === 0 ? (
+            <p className="hint mt-2">No other confirmed rules. The week is built with the confirmed rules and the basic limits.</p>
           ) : (
-            <ul className="mt-2 space-y-2" aria-label="Confirmed rules">
-              {confirmed.map((c) => (
-                <RuleCardView key={c.id} card={c} week={week} onError={setError} />
-              ))}
-            </ul>
+            <div className="rail-wrap mt-2">
+              <RailBar />
+              <ul aria-label="Confirmed rules">
+                {earlier.map((c) => (
+                  <RuleCardView key={c.id} card={c} week={week} onError={setError} no={noOf(c.id)} />
+                ))}
+              </ul>
+            </div>
           )
         ) : null}
       </div>

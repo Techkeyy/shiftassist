@@ -1,53 +1,74 @@
+@import "@fontsource-variable/familjen-grotesk/index.css";
+@import "@fontsource/zilla-slab/500.css";
+@import "@fontsource/zilla-slab/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
 @import "tailwindcss";
 @import "@agent-native/toolkit/styles.css";
+@import "./chat-sidebar.css";
+@import "./board.css";
 
 @source "./**/*.{ts,tsx}";
 
-/* ShiftAssist: a well-kept paper rota. Warm paper, one ink, one restrained accent (biro blue)
-   used only for the primary action and for "changed". Locked and problems each get their own
-   colour so they are never mistaken for the accent. */
+/* ShiftAssist, "The Pass": a ruled paper sheet. Paper and ink carry everything. Colour has jobs:
+   docket yellow = just changed, pin blue = locked, tomato = a problem or a refusal,
+   herb green = confirmed or allowed. Ink fills the one primary action. */
 :root {
-  --background: 43 33% 94%;
-  --foreground: 222 24% 13%;
-  --card: 44 42% 97%;
-  --card-foreground: 222 24% 13%;
-  --popover: 44 42% 97%;
-  --popover-foreground: 222 24% 13%;
-  --primary: 217 58% 30%;
-  --primary-foreground: 44 42% 98%;
-  --secondary: 42 24% 89%;
-  --secondary-foreground: 222 24% 13%;
-  --muted: 42 24% 90%;
-  --muted-foreground: 222 12% 34%;
-  --accent: 42 26% 88%;
-  --accent-foreground: 222 24% 13%;
-  --destructive: 8 62% 36%;
-  --destructive-foreground: 44 42% 98%;
-  --border: 40 14% 76%;
-  --input: 40 10% 48%;
-  --ring: 217 58% 30%;
-  --radius: 0.25rem;
-  --sidebar-background: 42 28% 91%;
-  --sidebar-foreground: 222 12% 30%;
-  --sidebar-primary: 217 58% 30%;
-  --sidebar-primary-foreground: 44 42% 98%;
-  --sidebar-accent: 42 26% 85%;
-  --sidebar-accent-foreground: 222 24% 13%;
-  --sidebar-border: 40 14% 76%;
-  --sidebar-ring: 217 58% 30%;
+  --background: 40 48% 94%; /* paper #F7F2E8 */
+  --foreground: 185 16% 15%; /* ink #1F2A2B */
+  --card: 45 100% 98%; /* raised paper #FFFDF7 */
+  --card-foreground: 185 16% 15%;
+  --popover: 45 100% 98%;
+  --popover-foreground: 185 16% 15%;
+  --primary: 185 16% 15%;
+  --primary-foreground: 40 48% 94%;
+  --secondary: 41 40% 90%;
+  --secondary-foreground: 185 16% 15%;
+  --muted: 41 40% 90%;
+  --muted-foreground: 175 6% 35%; /* secondary ink #55605F */
+  --accent: 41 40% 88%;
+  --accent-foreground: 185 16% 15%;
+  --destructive: 8 66% 44%;
+  --destructive-foreground: 45 100% 98%;
+  --border: 48 12% 81%;
+  --input: 135 3% 50%;
+  --ring: 210 55% 35%; /* pin blue */
+  --radius: 0.375rem;
+  --sidebar-background: 41 40% 90%;
+  --sidebar-foreground: 175 6% 30%;
+  --sidebar-primary: 185 16% 15%;
+  --sidebar-primary-foreground: 40 48% 94%;
+  --sidebar-accent: 41 36% 84%;
+  --sidebar-accent-foreground: 185 16% 15%;
+  --sidebar-border: 45 14% 77%;
+  --sidebar-ring: 210 55% 35%;
   --chat-sidebar-width: 15rem;
   --chat-sidebar-content-inset: 0.5rem;
   --chat-sidebar-row-padding: 0.75rem;
   --chat-sidebar-title-fade: 1.25rem;
   /* ShiftAssist only */
-  --lock: 276 32% 32%;
-  --lock-soft: 276 24% 91%;
-  --problem: 8 62% 36%;
+  --lock: 210 55% 35%; /* pin blue */
+  --lock-soft: 210 40% 90%;
+  --problem: 8 66% 44%; /* tomato */
   --problem-soft: 8 52% 93%;
-  --changed: 217 62% 88%;
-  --changed-foreground: 217 58% 22%;
-  --rule: 40 12% 62%;
-  --font-humanist: Seravek, "Gill Sans Nova", "Segoe UI", Calibri, Candara, "Noto Sans", sans-serif;
+  --allowed: 146 34% 30%; /* herb green, darkened for text */
+  --allowed-soft: 146 25% 90%;
+  --changed: 45 88% 57%; /* docket yellow, fills only */
+  --changed-foreground: 185 16% 15%;
+  --rule: 48 12% 81%;
+  --rule-strong: 135 3% 50%;
+  --font-display: "Zilla Slab", Georgia, serif;
+  --font-ui: "Familjen Grotesk Variable", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --font-humanist: var(--font-ui);
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* Chat panel: same tokens, 14px floor. */
+  --agent-kit-density-font-size: 0.875rem;
+  --agent-kit-density-line-height: 1.3rem;
+  --agent-kit-supporting-font-size: 0.875rem;
+  --agent-kit-supporting-line-height: 1.25rem;
+  --agent-kit-caption-font-size: 0.875rem;
+  --agent-kit-micro-font-size: 0.875rem;
 }
 
 @theme inline {
@@ -55,241 +76,60 @@
   --color-lock-soft: hsl(var(--lock-soft));
   --color-problem: hsl(var(--problem));
   --color-problem-soft: hsl(var(--problem-soft));
+  --color-allowed: hsl(var(--allowed));
+  --color-allowed-soft: hsl(var(--allowed-soft));
   --color-changed: hsl(var(--changed));
   --color-changed-foreground: hsl(var(--changed-foreground));
-  --color-rule: hsl(var(--rule));
+  --font-display: "Zilla Slab", Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
 }
 
-.chat-layout-shell {
-  --agent-layout-left-drawer-expanded-width: var(--chat-sidebar-width);
-  --agent-layout-left-drawer-collapsed-width: 3rem;
-  --agent-native-lower-surface: var(--agent-kit-nav-surface);
-}
-
-/* Phones get one app bar: the layout bar carries the thread title and
-   toolbar, so the AgentKit header would stack a second 48px bar. */
-@media (max-width: 47.99rem) {
-  [data-chat-header-in-app-bar="true"] .agentkit-chat-header {
-    display: none;
-  }
-}
-
-.agentkit-chat-empty-copy {
-  text-align: center;
-}
-
-.agentkit-chat-empty-copy h1 {
-  margin: 0;
-  color: hsl(var(--foreground));
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-.agent-kit-chat-footer-stack {
-  /* Matches the transcript text lane (the lane minus its 1rem padding). */
-  inline-size: min(
-    100%,
-    calc(var(--agent-kit-conversation-max-width, 47rem) - 2rem)
-  );
-  margin-inline: auto;
-  pointer-events: auto;
-}
-
-.agent-kit-chat-footer-stack > .agentkit-composer-stack {
-  inline-size: 100%;
-}
-
-.agent-kit-chat-guided-question {
-  max-block-size: min(32rem, 58dvh);
-  overflow: auto;
-  margin-block-end: 0.5rem;
-  border: 1px solid var(--agentkit-border);
-  border-radius: var(--agentkit-radius);
-  background: var(--agentkit-surface);
-  box-shadow: var(--agentkit-elevation);
-}
-
-.chat-sidebar-history .an-chat-history__list {
-  padding-top: 0;
-}
-
-.chat-sidebar-history .an-chat-history__section-label {
-  padding: 8px
-    calc(var(--chat-sidebar-content-inset) + var(--chat-sidebar-row-padding))
-    5px;
-  color: hsl(var(--sidebar-foreground));
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.chat-sidebar-history.an-chat-history--rail .an-chat-history-row {
-  margin-inline: var(--chat-sidebar-content-inset);
-  border-radius: calc(var(--radius) + 2px);
-}
-
-.chat-sidebar-history.an-chat-history--rail .an-chat-history__skeleton-row {
-  min-height: 32px;
-  margin-inline: var(--chat-sidebar-content-inset);
-  padding-inline: var(--chat-sidebar-row-padding);
-}
-
-.chat-sidebar-history.an-chat-history--rail .an-chat-history-row__button {
-  min-height: 32px;
-  padding-block: 6px;
-  padding-inline: var(--chat-sidebar-row-padding);
-  color: hsl(var(--sidebar-foreground));
-}
-
-/* The ⋯ trigger sits 3px in from the row edge and is 24px wide, so it
-   reaches 15px into the title line past the row padding. */
-.chat-sidebar-history.an-chat-history--rail {
-  --an-chat-history-menu-clearance: calc(
-    1.6875rem - var(--chat-sidebar-row-padding)
-  );
-}
-
-/* Pinned rows hide their trigger until hover here, so they fade only then. */
-.chat-sidebar-history.an-chat-history--rail
-  .an-chat-history-row--pinned:not(
-    :hover,
-    :focus-within,
-    .an-chat-history-row--menu-open
-  )
-  .an-chat-history-row__topline {
-  mask-image: none;
-}
-
-.chat-sidebar-history .an-chat-history-row__title {
-  flex: 1 1 auto;
-  color: hsl(var(--sidebar-accent-foreground));
-  font-size: 13px;
-  font-weight: 400;
-  text-overflow: clip;
-}
-
-.chat-sidebar-thread-title-shell {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 6px;
-}
-
-.chat-sidebar-thread-title {
-  display: block;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.chat-sidebar-thread-running {
-  color: hsl(var(--sidebar-foreground) / 0.72);
-}
-
-.chat-sidebar-thread-title[data-overflow="true"] {
-  mask-image: linear-gradient(
-    to right,
-    hsl(var(--foreground)) 0,
-    hsl(var(--foreground)) calc(100% - var(--chat-sidebar-title-fade)),
-    hsl(var(--foreground) / 0) 100%
-  );
-}
-
-.chat-sidebar-thread-title__content {
-  display: block;
-  width: max-content;
-  transform: translateX(0);
-}
-
-.an-chat-history-row:hover
-  .chat-sidebar-thread-title[data-overflow="true"]
-  .chat-sidebar-thread-title__content {
-  animation: chat-sidebar-title-reveal
-    var(--chat-sidebar-title-duration, 1800ms) ease-in-out 350ms;
-}
-
-.chat-sidebar-history.an-chat-history--rail
-  .an-chat-history-row__menu-trigger--pinned {
-  pointer-events: none;
-  opacity: 0;
-}
-
-.chat-sidebar-history.an-chat-history--rail
-  .an-chat-history-row:hover
-  .an-chat-history-row__menu-trigger--pinned,
-.chat-sidebar-history.an-chat-history--rail
-  .an-chat-history-row:focus-within
-  .an-chat-history-row__menu-trigger--pinned,
-.chat-sidebar-history.an-chat-history--rail
-  .an-chat-history-row__menu-trigger--pinned[aria-expanded="true"] {
-  pointer-events: auto;
-  opacity: 1;
-}
-
-@keyframes chat-sidebar-title-reveal {
-  to {
-    transform: translateX(calc(-1 * var(--chat-sidebar-title-shift, 0px)));
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .an-chat-history-row:hover .chat-sidebar-thread-title__content {
-    animation: none;
-  }
-}
-
-.chat-sidebar-history.an-chat-history--rail
-  .an-chat-history-row--active
-  .an-chat-history-row__button {
-  background: hsl(var(--sidebar-accent));
-  color: hsl(var(--sidebar-accent-foreground));
-}
 
 .dark {
-  --background: 222 16% 11%;
-  --foreground: 42 22% 90%;
-  --card: 222 15% 14%;
-  --card-foreground: 42 22% 90%;
-  --popover: 222 15% 15%;
-  --popover-foreground: 42 22% 90%;
-  --primary: 213 75% 74%;
-  --primary-foreground: 222 30% 9%;
-  --secondary: 222 12% 19%;
-  --secondary-foreground: 42 22% 90%;
-  --muted: 222 12% 18%;
-  --muted-foreground: 40 10% 70%;
-  --accent: 222 12% 20%;
-  --accent-foreground: 42 22% 90%;
-  --destructive: 8 78% 70%;
-  --destructive-foreground: 222 30% 9%;
-  --border: 222 10% 27%;
-  --input: 222 8% 50%;
-  --ring: 213 75% 74%;
-  --radius: 0.25rem;
-  --sidebar-background: 222 16% 9%;
-  --sidebar-foreground: 40 10% 72%;
-  --sidebar-primary: 213 75% 74%;
-  --sidebar-primary-foreground: 222 30% 9%;
-  --sidebar-accent: 222 12% 17%;
-  --sidebar-accent-foreground: 42 22% 90%;
-  --sidebar-border: 222 10% 22%;
-  --sidebar-ring: 213 75% 74%;
-  --lock: 276 50% 80%;
-  --lock-soft: 276 20% 20%;
-  --problem: 8 78% 70%;
-  --problem-soft: 8 30% 20%;
-  --changed: 213 45% 24%;
-  --changed-foreground: 213 75% 86%;
-  --rule: 222 8% 40%;
+  --background: 197 15% 9%; /* blue-black #14191B */
+  --foreground: 43 41% 91%; /* paper text #F2EDE0 */
+  --card: 198 15% 13%; /* raised #1C2326 */
+  --card-foreground: 43 41% 91%;
+  --popover: 198 15% 13%;
+  --popover-foreground: 43 41% 91%;
+  --primary: 43 41% 91%;
+  --primary-foreground: 197 15% 9%;
+  --secondary: 198 13% 17%;
+  --secondary-foreground: 43 41% 91%;
+  --muted: 198 13% 17%;
+  --muted-foreground: 158 6% 68%;
+  --accent: 198 13% 19%;
+  --accent-foreground: 43 41% 91%;
+  --destructive: 9 78% 70%;
+  --destructive-foreground: 197 15% 9%;
+  --border: 180 4% 23%;
+  --input: 165 5% 50%;
+  --ring: 211 64% 69%;
+  --radius: 0.375rem;
+  --sidebar-background: 197 15% 7%;
+  --sidebar-foreground: 158 6% 70%;
+  --sidebar-primary: 43 41% 91%;
+  --sidebar-primary-foreground: 197 15% 9%;
+  --sidebar-accent: 198 13% 16%;
+  --sidebar-accent-foreground: 43 41% 91%;
+  --sidebar-border: 180 4% 20%;
+  --sidebar-ring: 211 64% 69%;
+  --lock: 211 64% 72%;
+  --lock-soft: 211 30% 18%;
+  --problem: 9 78% 70%;
+  --problem-soft: 9 30% 19%;
+  --allowed: 143 37% 63%;
+  --allowed-soft: 143 20% 17%;
+  --changed: 45 88% 57%;
+  --changed-foreground: 185 16% 15%;
+  --rule: 180 4% 23%;
+  --rule-strong: 165 5% 50%;
 }
 
 @layer base {
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-humanist);
+    font-family: var(--font-ui);
     font-size: 16px;
     line-height: 1.5;
   }
@@ -297,107 +137,4 @@
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
   }
-}
-
-/* Times, counts and dates line up in columns. */
-.num {
-  font-variant-numeric: tabular-nums;
-}
-
-/* The week sheet: ruled like paper, not boxed. */
-.rota {
-  border-collapse: collapse;
-  width: 100%;
-}
-.rota th,
-.rota td {
-  border: 1px solid hsl(var(--border));
-  vertical-align: top;
-}
-.rota thead th {
-  border-bottom: 2px solid hsl(var(--rule));
-  background: hsl(var(--card));
-  text-align: left;
-  font-weight: 600;
-}
-.rota tbody th {
-  background: hsl(var(--card));
-  text-align: left;
-  font-weight: 600;
-}
-.rota td[data-over="true"] {
-  background: hsl(var(--changed));
-}
-
-/* A roster entry: written on the line, not a floating card. */
-.entry {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 0.25rem 0.5rem 0.25rem 0.5rem;
-  border: 0;
-  border-bottom: 1px solid hsl(var(--border));
-  border-left: 3px solid transparent;
-  background: transparent;
-  color: inherit;
-  cursor: grab;
-  line-height: 1.3;
-}
-.entry:last-child {
-  border-bottom: 0;
-}
-.entry:hover {
-  background: hsl(var(--accent));
-}
-.entry[aria-pressed="true"] {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: -2px;
-}
-.entry[data-locked="true"] {
-  border-left-color: hsl(var(--lock));
-}
-.entry[data-open="true"] {
-  border-left-color: hsl(var(--problem));
-  background: hsl(var(--problem-soft));
-}
-.entry[data-changed="true"] {
-  background: hsl(var(--changed));
-  color: hsl(var(--changed-foreground));
-}
-.entry[data-pending="true"] {
-  opacity: 0.55;
-}
-.entry-time {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.entry-note {
-  font-size: 0.8125rem;
-  font-weight: 600;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.22);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.34);
 }

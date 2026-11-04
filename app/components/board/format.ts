@@ -33,18 +33,17 @@ export function nextMonday(from = new Date()): string {
   return d.toISOString().slice(0, 10);
 }
 
-// 44px tall touch targets on phones, 36px from sm up. Primary is the one filled button.
-const btnBase =
-  "inline-flex min-h-11 items-center justify-center rounded-sm px-4 text-base font-semibold sm:min-h-9 sm:text-sm disabled:cursor-not-allowed disabled:opacity-60";
-export const btnPrimary = `${btnBase} bg-primary text-primary-foreground hover:bg-primary/90`;
-export const btnSecondary = `${btnBase} border border-input bg-card text-foreground hover:bg-accent`;
-export const btnDanger = `${btnBase} border border-destructive bg-card text-destructive hover:bg-problem-soft`;
-export const btnLink =
-  "inline-flex min-h-11 items-center px-1 text-base font-medium text-foreground underline underline-offset-4 hover:text-primary sm:min-h-9 sm:text-sm";
-export const inputCls =
-  "w-full min-h-11 rounded-sm border border-input bg-card px-2 py-1.5 text-base text-foreground sm:min-h-9 sm:text-sm";
-export const sectionTitle = "text-xl font-bold leading-tight";
-export const subTitle = "text-base font-bold";
+export const btnPrimary = "btn btn-primary";
+export const btnSecondary = "btn btn-secondary";
+export const btnDanger = "btn btn-danger";
+export const btnLink = "link";
+export const inputCls = "field";
+
+/** "Mon" and "3 Nov" for a sheet column head. */
+export function dayParts(date: string): { name: string; date: string } {
+  const d = new Date(`${date}T00:00:00Z`);
+  return { name: DAY_NAMES[d.getUTCDay()]!, date: `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}` };
+}
 
 /** Human text for a failed action; never the raw framework prefix. */
 export function errText(err: unknown, fallback: string): string {

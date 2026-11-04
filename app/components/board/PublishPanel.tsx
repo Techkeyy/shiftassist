@@ -15,14 +15,19 @@ export function PublishPanel({ week }: { week: WeekView }) {
   return (
     <div className="space-y-3">
       {week.published && link ? (
-        <div data-testid="published" className="space-y-2">
-          <p className="text-sm">
-            <span className="rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-900 dark:bg-green-950 dark:text-green-200">Live</span>{" "}
+        <div data-testid="published" className="space-y-3">
+          <p className="text-[0.9375rem]">
+            <span className="mono border px-1.5" style={{ borderColor: "hsl(var(--allowed))", color: "hsl(var(--allowed))" }}>
+              Live
+            </span>{" "}
             Staff can open this link on their phone. It always shows the current rota, so changes you make appear there too.
             {week.week?.isSample ? " It is labelled as a sample." : ""}
           </p>
+          <label className="field-label">
+            Public link
+            <input readOnly aria-label="Public link" className="field mono mt-1" value={link} onFocus={(e) => e.currentTarget.select()} />
+          </label>
           <div className="flex flex-wrap gap-2">
-            <input readOnly aria-label="Public link" className="min-w-0 flex-1 rounded-md border bg-muted/40 px-2 py-1.5 text-sm" value={link} onFocus={(e) => e.currentTarget.select()} />
             <button
               type="button"
               className={btnPrimary}
@@ -45,12 +50,12 @@ export function PublishPanel({ week }: { week: WeekView }) {
               {unpublish.isPending ? "Stopping..." : "Stop sharing"}
             </button>
           </div>
-          {copied === "ok" ? <p role="status" className="text-sm text-muted-foreground">Link copied.</p> : null}
-          {copied === "fail" ? <p role="alert" className="text-sm text-destructive">Couldn't copy. Select the link and copy it yourself.</p> : null}
+          {copied === "ok" ? <p role="status" className="hint">Link copied.</p> : null}
+          {copied === "fail" ? <p role="alert" className="problem-line">Couldn't copy. Select the link and copy it yourself.</p> : null}
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">
+          <p className="hint">
             Publish gives you a private link your staff can open on their phone without signing in. They see the rota and why each person has each shift. They cannot change anything.
           </p>
           <button
@@ -66,10 +71,10 @@ export function PublishPanel({ week }: { week: WeekView }) {
           >
             {publish.isPending ? "Publishing..." : "Publish this week"}
           </button>
-          {!placed ? <p className="text-xs text-muted-foreground">Build the week first, then publish it.</p> : null}
+          {!placed ? <p className="hint">Build the week first, then publish it.</p> : null}
         </div>
       )}
-      {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+      {error ? <p role="alert" className="problem-line">{error}</p> : null}
     </div>
   );
 }
