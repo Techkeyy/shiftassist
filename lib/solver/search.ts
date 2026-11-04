@@ -231,13 +231,13 @@ export function buildTrace(
       st.roles.includes(slot.role) ? `Has the ${slot.role} role.` : `Does not have the ${slot.role} role.`,
     );
     reasons.push(
-      `Has ${valueAt(stats.closes, k)} closes this week, the team average is ${average(stats.closes).toFixed(1)}.`,
+      `Has ${countOf(valueAt(stats.closes, k), "close", "closes")} this week, the team average is ${average(stats.closes).toFixed(1)}.`,
     );
     reasons.push(
-      `Has ${valueAt(stats.weekends, k)} weekend shifts this week, the team average is ${average(stats.weekends).toFixed(1)}.`,
+      `Has ${countOf(valueAt(stats.weekends, k), "weekend shift", "weekend shifts")} this week, the team average is ${average(stats.weekends).toFixed(1)}.`,
     );
     reasons.push(
-      `Has ${valueAt(stats.shifts, k)} shifts this week, the team average is ${average(stats.shifts).toFixed(1)}.`,
+      `Has ${countOf(valueAt(stats.shifts, k), "shift", "shifts")} this week, the team average is ${average(stats.shifts).toFixed(1)}.`,
     );
     for (const v of own.soft) reasons.push(`Breaks a soft rule: ${v.message}`);
   }
@@ -295,4 +295,8 @@ export function finish(model: Model, locked: Assignment[], placed: Placement[]):
     result: { assignments, unfilled, traces, fairness, lockedViolations },
     sched,
   };
+}
+
+function countOf(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
 }
