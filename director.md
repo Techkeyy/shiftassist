@@ -1,0 +1,100 @@
+# ShiftAssist: director handover
+
+Read this first if you are taking over. Standard: `Desktop/skill/master director skill.txt`. Research: `agent-native-idea-research.md` (the idea was called Fair Shift there).
+
+**Authoritative status: BUILDING. Core path not yet proven.**
+
+Deadline: Mon Nov 9, 11:59 PM PT (Nov 10, 07:59 UTC). Target: code freeze Nov 9, 12:00 UTC. Submit by Nov 9, 22:00 UTC.
+
+Rules for this repo: no Claude co-author trailer, no Claude collaborator. Solo entry by the owner. Owner submits and records the demo personally.
+
+## Product contract
+
+- **Product:** ShiftAssist
+- **User:** manager or owner of an independent restaurant, café or small clinic with 10 to 30 staff
+- **Problem:** requests live in chats and memory; building a fair week takes hours; staff question it; sick days cause a scramble
+- **Promise:** paste the messages, get a schedule that keeps every confirmed rule, explain any shift, and cover a sick day in minutes
+
+**Core Outcome:** this product is only genuinely working when a first-time manager turns their own staff messages into a published week that keeps every rule they confirmed, gets a sick shift covered, and finds both still there after returning, with no developer help.
+
+### Real user journey (primary acceptance test)
+
+1. Open the deployed site and create an account, or try the sample restaurant
+2. Add staff and shift needs (or start from the sample)
+3. Paste staff messages
+4. Review rule cards: correct, delete or add
+5. Press Build week; the board fills in
+6. Drag and lock a shift; the rest repairs, with changes highlighted; rule breaks are refused with a reason
+7. Click any shift to see why that person has it
+8. Publish; get a real read-only link staff can open on a phone
+9. Sick day: tell the app in chat or by a button; ranked cover options; approve one; the board and link update; copy the prepared message
+10. Leave, return, refresh; everything is still there
+
+### Must be real
+
+Real model calls, real database writes per account, real sign-in, real public link. Sample data is allowed only when labelled as sample. ShiftAssist does not send texts in v1: the button says Copy message, never Send.
+
+### Scope
+
+- **NOW:** the journey above, one location per account, one week at a time
+- **NEXT:** fairness history across weeks, CSV export, staff swap requests
+- **LATER:** real SMS, payroll, forecasts, labour-law packs, staff logins
+- **Not doing:** legal compliance claims. Rules are the manager's own
+
+## Architecture
+
+- Agent-Native chat template, standalone. React Router UI, `actions/`, Drizzle over Postgres (PGlite locally)
+- `lib/solver/` pure TypeScript, no I/O, deterministic for the same input
+- The model only does two jobs: turning messages into proposed rules, and explaining in plain words. It never places a shift
+- Every write to assignments goes through one server function that re-checks hard rules
+
+## Claim, mechanism, proof ledger
+
+| Claim | Mechanism | Boundary | Required proof | Current | Status |
+| --- | --- | --- | --- | --- | --- |
+| A confirmed hard rule can't be broken by drag or agent | Server re-check in every assignment write | Action layer. Must also confirm agent has no raw database write path | Direct action call and chat attempt both refused | None | UNPROVEN |
+| Same input gives same week | Pure solver | Solver | Repeat-run test | None | UNPROVEN |
+| Every placement has a true reason | Trace produced by solver, not the model | Solver | Trace matches recomputed rule state | None | UNPROVEN |
+| Messages become correct rules | Model, then human review before use | Review step; unconfirmed rules never reach solver | Real messy messages through real model | None | UNPROVEN |
+| Board and chat share actions | Same `defineAction`s | Framework | Same action seen from drag and from chat, live update | None | UNPROVEN |
+| User A can't see or change user B | Owner scoping in all actions | Server | Two accounts, cross-access refused | None | UNPROVEN |
+| Publish link shows the current week to anyone | Token route, read-only | Server | Open logged out on a phone; write refused | None | UNPROVEN |
+| Survives refresh and return | Postgres | Database | Fresh session on production | None | UNPROVEN |
+
+## Rubric to acceptance test
+
+| Criterion | Weight | Test |
+| --- | --- | --- |
+| Usefulness and Execution | 40 | Fresh account completes the full journey on production |
+| Creativity and Design | 20 | Passes substitution test and unslop audit; "why" panel is memorable |
+| Innovation | 20 | Agent handles messy language; code guarantees rules; visible in demo |
+| Use of Agent-Native | 20 | Drag and chat use one action; selection context; sendToAgentChat on Why; live board update |
+
+## Feature matrix
+
+| Feature | UI | Backend | Real integration | Production | Manual | Recovery | Final |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Sign-in, sample start | | | | | | | |
+| Staff and shift needs | | | | | | | |
+| Messages to rules | | | | | | | |
+| Build week | | | | | | | |
+| Drag, lock, repair | | | | | | | |
+| Why panel | | | | | | | |
+| Publish link | | | | | | | |
+| Sick-day cover | | | | | | | |
+
+## Environment facts (2026-11-04)
+
+- Windows 11, Node 24.14, pnpm 11.19. PC is tight: 796 MB free RAM of 16 GB, 6 GB free disk measured today
+- `npx` scaffold hung twice; use `pnpm dlx`. `pnpm install` took over 14 minutes and was cut off once
+- If local running stays unworkable, relocate to a cloud machine rather than repair (build-process Phase 4)
+
+## Owner needs to provide (not yet requested)
+
+- A model key (Anthropic or OpenAI) set by the owner in `.env` or host settings
+- Hosting login and Postgres (Netlify or Vercel, plus Neon)
+- Decision on other hackathons competing for Nov 7 to 9
+
+## Log
+
+- 2026-11-04: owner chose the idea and the name ShiftAssist. Read master director, build-process, design and project-edge skills. Scaffold started.

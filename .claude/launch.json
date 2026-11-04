@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "shiftassist", "runtimeExecutable": "pnpm", "runtimeArgs": ["exec", "agent-native", "dev"], "port": 8080 }
+  ]
+}
