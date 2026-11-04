@@ -2,7 +2,15 @@
 
 Read this first if you are taking over. Standard: `Desktop/skill/master director skill.txt`. Research: `agent-native-idea-research.md` (the idea was called Fair Shift there).
 
-**Authoritative status: BUILDING. INTEGRATION PROVEN locally for move-shift only (drag handler plus chat through DeepSeek, live board). Core Outcome not proven. Nothing deployed.**
+**Authoritative status: BUILDING. Deployed at https://shiftassist.vercel.app (commit 9140859 code). Live site proven only for: pages load, logged-out action calls return 401, no secrets or template analytics IDs in the home page HTML. Core Outcome NOT proven on production. Live sign-up, model default, agent tools, rules enforcement and two-account isolation are all untested there.**
+
+Owner evidence (2026-11-04, live, fresh account): sign-up works; model shows `deepseek-flash` and the assistant replied, so the org-default risk did not occur. Bug: pasted messages stuck on "reading" and never appeared in chat (sent to UI builder). Owner rejected the current look: design direction is `docs/design-brief.md` ("The Pass"), to be built after the UI builder finishes.
+
+Director may not create accounts on the production host, so live account testing is owner UAT, one step at a time. Check: `/database` returns 200 logged out; confirm it is only the app shell with no data.
+
+Deploy recipe (Windows): `node --env-file=.deploy.local node_modules/tsx/dist/cli.mjs scripts/migrate-production.ts` with NO short timeout (killing it leaves a lock row that stalls the next run until it expires), then `AGENT_NATIVE_VERCEL_CRON_SCHEDULE="0 9 * * *" NITRO_PRESET=vercel pnpm build`, `node scripts/vercel-fix-links.cjs` (replaces junctions Vercel can't resolve), `vercel deploy --prebuilt --prod --yes`. Hobby plan needs the daily schedule. CRON_SECRET not set; background automations are not part of the journey.
+
+Earlier status: INTEGRATION PROVEN locally for move-shift only (drag handler plus chat through DeepSeek, live board).
 
 Kill test, director-observed 2026-11-04, local dev build only:
 - Chat "Give Sam the Friday lunch server shift" moved it through `move-shift`; board changed with no reload (Priya 3/4 to 2/4).

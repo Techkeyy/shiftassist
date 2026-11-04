@@ -1,8 +1,8 @@
 {
   "name": "shiftassist",
-  "displayName": "Shiftassist",
+  "displayName": "ShiftAssist",
   "private": true,
-  "description": "Workspace app for Shiftassist.",
+  "description": "Workspace app for ShiftAssist.",
   "type": "module",
   "scripts": {
     "migrate:production": "tsx scripts/migrate-production.ts",

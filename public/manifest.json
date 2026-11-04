@@ -1,7 +1,7 @@
 {
-  "name": "Shiftassist",
-  "short_name": "Shiftassist",
-  "description": "Workspace app for Shiftassist.",
+  "name": "ShiftAssist",
+  "short_name": "ShiftAssist",
+  "description": "Staff rota app for independent restaurants.",
   "start_url": "./home",
   "background_color": "#111111",
   "theme_color": "#18181B",

@@ -1,5 +1,5 @@
 const rawAppName = "shiftassist";
-const rawAppTitle = "Shiftassist";
+const rawAppTitle = "ShiftAssist";
 
 const APP_NAME_PLACEHOLDER = "{" + "{APP_NAME}}";
 const APP_TITLE_PLACEHOLDER = "{" + "{APP_TITLE}}";

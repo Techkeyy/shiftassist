@@ -441,9 +441,7 @@ export function Sidebar({
           collapsed ? "items-center gap-1 px-1 py-2" : "pt-1",
         )}
       >
-        <HomeNavLink collapsed={collapsed} />
         <BoardNavLink collapsed={collapsed} />
-        <ChatThreadsSection collapsed={collapsed} />
       </nav>
 
       <div className="mt-auto shrink-0 border-t border-sidebar-border p-2">

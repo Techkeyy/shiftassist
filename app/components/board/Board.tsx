@@ -185,7 +185,7 @@ export function Board() {
     );
   }
 
-  const proposedCount = data.rules.filter((r) => r.status === "proposed").length;
+  const proposedCount = data.rules.filter((r) => r.status === "proposed" && r.kind !== "note").length;
   const hasCoverMessage = change?.kind === "cover" && change.message && dismissedMessage !== change.at;
   const next = {
     rules: { text: "Next: paste your staff's messages so ShiftAssist can find their rules.", button: "Go to messages", target: "sec-rules" },

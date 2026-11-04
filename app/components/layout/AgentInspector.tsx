@@ -2,7 +2,7 @@ import { navigateWithAgentChatViewTransition } from "@agent-native/core/client/a
 import { useT } from "@agent-native/core/client/i18n";
 import { focusAgentChat } from "@agent-native/toolkit/app/chat";
 import { AgentSidebar } from "@agent-native/toolkit/app/chat";
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { chatThreadPath } from "@/lib/chat-paths";
@@ -14,6 +14,19 @@ interface AgentInspectorProps {
   chatHomeHandoffPending: boolean;
 }
 
+/** Below 1280 px the chat panel floats over the board instead of squeezing it. */
+function useNarrowViewport() {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1279px)");
+    const update = () => setNarrow(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return narrow;
+}
+
 /** Contextual inspector shell used on secondary chat routes. */
 export function AgentInspector({
   children,
@@ -22,6 +35,7 @@ export function AgentInspector({
 }: AgentInspectorProps) {
   const navigate = useNavigate();
   const t = useT();
+  const narrow = useNarrowViewport();
 
   function openAskAgentFullscreen(threadId?: string) {
     focusAgentChat();
@@ -31,6 +45,7 @@ export function AgentInspector({
   return (
     <AgentSidebar
       position="right"
+      forceOverlay={narrow}
       chatViewTransition
       chatViewTransitionHandoff={chatHomeHandoffPending}
       storageKey="chat"

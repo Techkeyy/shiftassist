@@ -1,4 +1,4 @@
-import { useActionMutation } from "@agent-native/core/client/hooks";
+import { useActionMutation, useActionQuery } from "@agent-native/core/client/hooks";
 import { sendToAgentChat } from "@agent-native/core/client/agent-chat";
 import { useEffect, useRef, useState } from "react";
 
@@ -27,29 +27,75 @@ function Badge({ severity }: { severity: "hard" | "soft" }) {
   );
 }
 
-function PasteBox({ week }: { week: WeekView }) {
+function PasteBox({ week, onAddByHand }: { week: WeekView; onAddByHand: () => void }) {
   const [text, setText] = useState("");
   const [sentAt, setSentAt] = useState<number | null>(null);
   const [slow, setSlow] = useState(false);
-  const proposedNow = week.rules.filter((r) => r.status === "proposed").length;
+  const [failed, setFailed] = useState<string | null>(null);
+  const [limit, setLimit] = useState<string | null>(null);
+  const status = useActionQuery("assistant-status", {});
+  const cardsNow = week.rules.length;
   const baseline = useRef(0);
+  const cardsRef = useRef(cardsNow);
+  cardsRef.current = cardsNow;
+  const sawRunning = useRef(false);
 
-  // "Reading" ends when new proposed cards show up; after a minute point the manager at the chat.
+  // "Reading" ends when new cards show up. If the run ends and nothing new arrives within
+  // about 2.5 s (time for the board to sync), say so plainly and offer the by-hand route.
   useEffect(() => {
     if (sentAt === null) return;
-    if (proposedNow > baseline.current) {
+    if (cardsNow > baseline.current) {
       setSentAt(null);
       setSlow(false);
       return;
     }
+    let settle: number | undefined;
+    const onRun = (e: Event) => {
+      const running = Boolean((e as CustomEvent<{ isRunning?: boolean }>).detail?.isRunning);
+      if (running) {
+        sawRunning.current = true;
+        window.clearTimeout(settle);
+      } else if (sawRunning.current) {
+        settle = window.setTimeout(() => {
+          if (cardsRef.current <= baseline.current) {
+            setSentAt(null);
+            setFailed("Your assistant finished but added no new rule cards. The text may already be on your list, or may not contain a rule. Nothing was changed.");
+          }
+        }, 2500);
+      }
+    };
+    window.addEventListener("agentNative.chatRunning", onRun);
+    const never = window.setTimeout(() => {
+      if (!sawRunning.current && cardsRef.current <= baseline.current) {
+        setSentAt(null);
+        setFailed("The assistant didn't start. Try again, or add the rule by hand.");
+      }
+    }, 20000);
     const t = window.setTimeout(() => setSlow(true), 60000);
-    return () => window.clearTimeout(t);
-  }, [sentAt, proposedNow]);
+    return () => {
+      window.removeEventListener("agentNative.chatRunning", onRun);
+      window.clearTimeout(settle);
+      window.clearTimeout(never);
+      window.clearTimeout(t);
+    };
+  }, [sentAt, cardsNow]);
 
-  function send() {
-    const body = text.trim();
+  async function send(override?: string) {
+    const body = (override ?? text).trim();
     if (!body) return;
-    baseline.current = proposedNow;
+    setFailed(null);
+    setLimit(null);
+    try {
+      const r = await status.refetch();
+      if (r.data?.exhausted) {
+        setLimit(r.data.message ?? "You've used today's assistant limit. The board, rules and sharing all still work.");
+        return;
+      }
+    } catch {
+      // If the check itself fails, let the send go ahead; the server enforces the limit.
+    }
+    baseline.current = cardsNow;
+    sawRunning.current = false;
     sendToAgentChat({
       message:
         `Here are my staff's messages for the week starting ${week.week?.startDate}. ` +
@@ -63,6 +109,8 @@ function PasteBox({ week }: { week: WeekView }) {
     setSentAt(Date.now());
     setSlow(false);
   }
+
+  const limitMsg = limit ?? (status.data?.exhausted ? status.data.message : null);
 
   return (
     <div className="space-y-2">
@@ -79,18 +127,30 @@ function PasteBox({ week }: { week: WeekView }) {
         onChange={(e) => setText(e.target.value)}
       />
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className={btnPrimary} disabled={!text.trim() || sentAt !== null} onClick={send}>
+        <button type="button" className={btnPrimary} disabled={!text.trim() || sentAt !== null} onClick={() => void send()}>
           {sentAt !== null ? "Your assistant is reading..." : "Read these messages"}
         </button>
         {week.exampleMessages ? (
-          <button type="button" className={btnSecondary} onClick={() => setText(week.exampleMessages ?? "")}>
-            Use the example messages
-          </button>
+          <>
+            <button type="button" className={btnSecondary} disabled={sentAt !== null} onClick={() => { setText(week.exampleMessages ?? ""); void send(week.exampleMessages ?? ""); }}>
+              Read the example messages
+            </button>
+            <button type="button" className={btnSecondary} onClick={() => setText(week.exampleMessages ?? "")}>
+              Put them in the box
+            </button>
+          </>
         ) : null}
         <span className="text-xs text-muted-foreground">
           {text.length}/{MAX_PASTE}
         </span>
       </div>
+      {limitMsg ? <p role="alert" className="text-sm text-amber-900 dark:text-amber-200">{limitMsg}</p> : null}
+      {failed ? (
+        <div role="alert" className="space-y-2 text-sm">
+          <p className="text-destructive">{failed}</p>
+          <button type="button" className={btnSecondary} onClick={onAddByHand}>Add a rule by hand</button>
+        </div>
+      ) : null}
       {sentAt !== null ? (
         <p role="status" className="text-sm text-muted-foreground">
           Sent to your assistant in the chat panel. Rule cards will appear here for you to check; nothing is used until you confirm it.
@@ -98,6 +158,31 @@ function PasteBox({ week }: { week: WeekView }) {
         </p>
       ) : null}
     </div>
+  );
+}
+
+function NoteCardView({ card, week, onError }: { card: Card; week: WeekView; onError: (m: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const del = useActionMutation("delete-rule");
+  if (editing) return <RuleEditor card={card} week={week} onClose={() => setEditing(false)} />;
+  return (
+    <li data-testid="note-card" className="rounded-lg border border-amber-500 bg-amber-50 p-3 dark:bg-amber-950/30">
+      <span className="rounded bg-amber-200 px-1.5 py-0.5 text-xs font-medium text-amber-950">Not a rule</span>
+      {card.source ? <p className="mt-1 text-sm font-medium">"{card.source}"</p> : null}
+      {card.text && card.text !== card.source ? <p className="mt-1 text-xs text-muted-foreground">{card.text}</p> : null}
+      <p className="mt-1 text-xs text-muted-foreground">Kept as a note. It does not change the schedule.</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button type="button" className={btnSecondary} onClick={() => setEditing(true)}>Turn into a rule</button>
+        <button
+          type="button"
+          className={btnDanger}
+          disabled={del.isPending}
+          onClick={() => del.mutate({ id: card.id }, { onError: (err) => onError(errText(err, "Couldn't dismiss that note.")) })}
+        >
+          {del.isPending ? "Dismissing..." : "Dismiss"}
+        </button>
+      </div>
+    </li>
   );
 }
 
@@ -113,7 +198,7 @@ function blankEditor(card: Card | null, week: WeekView) {
   };
   return {
     staffId: card?.staffId ?? "",
-    kind: (card && card.kind !== "unclear" ? card.kind : "unavailable") as "unavailable" | "no_double" | "max_shifts" | "min_rest",
+    kind: (card && card.kind !== "unclear" && card.kind !== "note" ? card.kind : "unavailable") as "unavailable" | "no_double" | "max_shifts" | "min_rest",
     severity: (card?.severity ?? "hard") as "hard" | "soft",
     days: (d.weekdays ?? []) as number[],
     from: d.from ?? "",
@@ -298,13 +383,14 @@ export function RulesPanel({ week }: { week: WeekView }) {
   const [error, setError] = useState<string | null>(null);
   const [showConfirmed, setShowConfirmed] = useState(false);
   const confirmAll = useActionMutation("confirm-rules");
-  const proposed = week.rules.filter((r) => r.status === "proposed");
-  const confirmed = week.rules.filter((r) => r.status === "confirmed");
+  const notes = week.rules.filter((r) => r.kind === "note");
+  const proposed = week.rules.filter((r) => r.status === "proposed" && r.kind !== "note");
+  const confirmed = week.rules.filter((r) => r.status === "confirmed" && r.kind !== "note");
   const ready = proposed.filter((r) => !r.flag && r.staffId);
 
   return (
     <div className="space-y-4">
-      <PasteBox week={week} />
+      <PasteBox week={week} onAddByHand={() => setAdding(true)} />
 
       {error ? (
         <p role="alert" className="text-sm text-destructive">
@@ -341,6 +427,17 @@ export function RulesPanel({ week }: { week: WeekView }) {
           </ul>
         )}
       </div>
+
+      {notes.length > 0 ? (
+        <div>
+          <h3 className="text-sm font-medium">Needs your eye ({notes.length})</h3>
+          <ul className="mt-2 space-y-2" aria-label="Notes that are not rules">
+            {notes.map((c) => (
+              <NoteCardView key={c.id} card={c} week={week} onError={setError} />
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div>
         <button type="button" className="text-sm underline" onClick={() => setShowConfirmed((v) => !v)} aria-expanded={showConfirmed}>

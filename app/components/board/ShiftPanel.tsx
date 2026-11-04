@@ -1,6 +1,6 @@
 import { useActionMutation, useActionQuery } from "@agent-native/core/client/hooks";
-import { sendToAgentChat } from "@agent-native/core/client/agent-chat";
-import { useState } from "react";
+import { sendToAgentChatAndConfirm } from "@agent-native/core/client/agent-chat";
+import { useEffect, useState } from "react";
 
 import type { WeekView } from "../../../server/lib/week-view";
 import { btnDanger, btnPrimary, btnSecondary, errText } from "./format";
@@ -107,15 +107,35 @@ export function ShiftPanel({
   const why = useActionQuery("explain-shift", { slotId: slot.id });
   const [covering, setCovering] = useState(false);
 
-  function askWhy() {
-    if (!why.data) return;
-    sendToAgentChat({
+  const [askState, setAskState] = useState<"idle" | "queued" | "sent" | "failed">("idle");
+
+  async function deliverWhy(summary: string) {
+    const opts = {
       message: `Explain in plain words, in two or three short sentences, why ${slot.staffName ?? "nobody"} has the ${slot.description} shift. Use only the engine's reasons in the context. Do not invent reasons.`,
-      context: why.data.summary,
+      context: summary,
       contextLabel: `Why: ${slot.description}`,
+      chatTarget: "local" as const,
       submit: true,
       openSidebar: true,
-    });
+    };
+    try {
+      const r = await sendToAgentChatAndConfirm(opts);
+      setAskState(r.delivered ? "sent" : "failed");
+    } catch {
+      setAskState("failed");
+    }
+  }
+
+  // The click is never dead: if the reasons are not here yet, queue it and send when they arrive.
+  useEffect(() => {
+    if (askState !== "queued") return;
+    if (why.data) void deliverWhy(why.data.summary);
+    else if (why.error) setAskState("failed");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [askState, why.data]);
+
+  function askWhy() {
+    setAskState("queued");
   }
 
   return (
@@ -165,11 +185,13 @@ export function ShiftPanel({
             Someone can't make it
           </button>
         ) : null}
-        <button type="button" className={btnSecondary} onClick={askWhy} disabled={!why.data} title="Your assistant explains it in plain words">
-          Ask why
+        <button type="button" className={btnSecondary} onClick={askWhy} disabled={askState === "queued"} title="Your assistant explains it in plain words">
+          {askState === "queued" ? "Asking..." : "Ask why"}
         </button>
       </div>
 
+      {askState === "sent" ? <p role="status" className="text-sm text-muted-foreground">Sent to your assistant. Its answer is in the chat panel.</p> : null}
+      {askState === "failed" ? <p role="alert" className="text-sm text-destructive">Your assistant didn't take that. Try Ask why again; the reasons below are still right.</p> : null}
       {covering ? <CoverFlow slot={slot} onClose={() => setCovering(false)} onNotice={onNotice} /> : null}
 
       <div data-testid="why-panel">
