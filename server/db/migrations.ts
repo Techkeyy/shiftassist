@@ -74,6 +74,18 @@ export const migrations: MigrationEntry[] = [
       CREATE UNIQUE INDEX IF NOT EXISTS shiftassist_weeks_token_uq ON shiftassist_weeks (published_token);
     `,
   },
+  {
+    version: 4,
+    name: "shiftassist-agent-daily-usage",
+    sql: `
+      CREATE TABLE IF NOT EXISTS shiftassist_agent_usage (
+        owner_email TEXT NOT NULL,
+        day TEXT NOT NULL,
+        turns INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (owner_email, day)
+      );
+    `,
+  },
 ];
 
 export const MIGRATIONS_TABLE = "shiftassist_migrations";

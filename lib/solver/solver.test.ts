@@ -497,8 +497,18 @@ describe("time boundaries", () => {
     const input = withSlots([atStart, endsAtStart], [rule]);
     const res1 = checkAssignment(input, [], { slotId: "a", staffId: "p" });
     expect(res1.ok).toBe(false);
-    expect(res1.violations[0].message).toBe("Pat can't work after 17:00 from Nov 4 until Nov 4.");
+    expect(res1.violations[0].message).toBe("Pat can't work after 17:00 on Nov 4.");
     expect(checkAssignment(input, [], { slotId: "b", staffId: "p" }).ok).toBe(true);
+  });
+
+  it("words a one-day rule as 'on <date>' and a range as 'from <date> to <date>'", () => {
+    const oneDay: Rule = { id: "u1", staffId: "p", severity: "hard", kind: "unavailable", from: "2026-11-12", until: "2026-11-12" };
+    const range: Rule = { id: "u2", staffId: "p", severity: "hard", kind: "unavailable", from: "2026-11-12", until: "2026-11-14" };
+    const slot: Slot = { id: "s", date: "2026-11-12", start: "09:00", end: "10:00", role: "bar" };
+    const one = checkAssignment(withSlots([slot], [oneDay]), [], { slotId: "s", staffId: "p" });
+    expect(one.violations[0].message).toBe("Pat can't work on Nov 12.");
+    const many = checkAssignment(withSlots([slot], [range]), [], { slotId: "s", staffId: "p" });
+    expect(many.violations[0].message).toBe("Pat can't work from Nov 12 to Nov 14.");
   });
 
   it("applies date range edges inclusively and leaves outside dates alone", () => {

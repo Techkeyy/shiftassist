@@ -1,4 +1,4 @@
-import { boolean, index, integer, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, primaryKey, text, uniqueIndex } from "drizzle-orm/pg-core";
 
 /**
  * Every table is private to one account: `owner_email` is set from the
@@ -92,4 +92,15 @@ export const assignments = pgTable(
     // One person per slot, per owner.
     uniqueIndex("shiftassist_assignments_owner_slot_uq").on(t.ownerEmail, t.slotId),
   ],
+);
+
+/** Assistant turns used per account per UTC day. Read and written only by server/lib/usage.ts. */
+export const agentUsage = pgTable(
+  "shiftassist_agent_usage",
+  {
+    ownerEmail: text("owner_email").notNull(),
+    day: text("day").notNull(),
+    turns: integer("turns").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.ownerEmail, t.day] })],
 );

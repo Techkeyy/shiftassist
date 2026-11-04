@@ -192,8 +192,15 @@ export function buildSched(model: Model, assignments: Assignment[]): Sched {
   return sched;
 }
 
+/** "Fri 13 Nov" for a YYYY-MM-DD date. Never shows the raw ISO date to a person. */
+export function fmtDay(date: string): string {
+  const wd = new Date(`${date}T00:00:00Z`).getUTCDay();
+  return `${WEEKDAYS[wd]} ${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1]}`;
+}
+
+/** "server shift on Fri 13 Nov, 11:00 to 16:00" */
 export function describeSlot(slot: Slot): string {
-  return `${slot.date} ${slot.start}-${slot.end} ${slot.role}`;
+  return `${slot.role} shift on ${fmtDay(slot.date)}, ${slot.start} to ${slot.end}`;
 }
 
 function fmtDate(date: string): string {
@@ -221,7 +228,11 @@ function unavailableText(name: string, rule: Rule & { kind: "unavailable" }): st
     parts.push(`on ${names.join(", ")}`);
   }
   if (rule.from !== undefined && rule.until !== undefined) {
-    parts.push(`from ${fmtDate(rule.from)} until ${fmtDate(rule.until)}`);
+    parts.push(
+      rule.from === rule.until
+        ? `on ${fmtDate(rule.from)}`
+        : `from ${fmtDate(rule.from)} to ${fmtDate(rule.until)}`,
+    );
   } else if (rule.from !== undefined) {
     parts.push(`from ${fmtDate(rule.from)}`);
   } else if (rule.until !== undefined) {
@@ -314,7 +325,7 @@ export function evaluate(model: Model, sched: Sched, staffId: string, slotId: st
   if (takenBy !== undefined && takenBy !== staffId) {
     hard.push({
       code: "slot_taken",
-      message: `The ${describeSlot(slot)} shift is already filled by ${model.staffById.get(takenBy)!.name}.`,
+      message: `The ${describeSlot(slot)} is already filled by ${model.staffById.get(takenBy)!.name}.`,
     });
   }
 
@@ -327,7 +338,7 @@ export function evaluate(model: Model, sched: Sched, staffId: string, slotId: st
     if (iv.s < oi.e && oi.s < iv.e) {
       hard.push({
         code: "overlap",
-        message: `${name} is already on ${describeSlot(model.slotById.get(oid)!)}, which overlaps this shift.`,
+        message: `${name} is already on the ${describeSlot(model.slotById.get(oid)!)}, which overlaps this shift.`,
       });
     }
   }

@@ -169,7 +169,12 @@ export async function listRuleCards(owner: string): Promise<RuleCard[]> {
         status: r.status,
         source: r.source,
         flag: r.flag,
-        text: r.flag && r.kind === "unclear" ? `Not understood: ${r.source ?? ""}` : ruleText({ kind: r.kind, severity: r.severity, details }, nameForText),
+        text:
+          r.kind === "note"
+            ? noteText(r.source ?? "", details, person ?? null)
+            : r.flag && r.kind === "unclear"
+              ? `Not understood: ${r.source ?? ""}`
+              : ruleText({ kind: r.kind, severity: r.severity, details }, nameForText),
       };
     })
     .sort((a, b) => (a.status === b.status ? a.id.localeCompare(b.id) : a.status === "proposed" ? -1 : 1));
@@ -199,10 +204,17 @@ export function resolveStaff(
 
 export interface ProposeResult {
   stored: number;
+  notes: number;
   flagged: number;
   duplicatesSkipped: number;
   cards: { id: string; text: string; needsAPerson: boolean; flag: string | null }[];
   message: string;
+}
+
+/** What a note card says: the asker's summary if given, otherwise their own words. */
+export function noteText(source: string, details: RuleDetails, name: string | null): string {
+  const summary = typeof details.summary === "string" ? details.summary : "";
+  return summary || `${name ? name + ": " : ""}${source}`;
 }
 
 const proposeItem = z.object({
@@ -214,11 +226,28 @@ const proposeItem = z.object({
     .describe("The staff member's ORIGINAL sentence, copied word for word from the pasted messages."),
 });
 export const proposeItemSchema = proposeItem;
+
+/** A staff message that is NOT a rule (a swap request, a question, a thank-you). Kept as a note card. */
+export const noteItemSchema = z.object({
+  source: z
+    .string()
+    .min(1)
+    .max(MAX_SOURCE_LENGTH)
+    .describe("The staff member's ORIGINAL sentence, copied word for word."),
+  staffName: z.string().max(80).optional().describe("Who wrote it or who it is about, as written. Optional."),
+  summary: z.string().max(200).optional().describe("One plain sentence on what they are asking. Optional."),
+});
+export type NoteItem = z.infer<typeof noteItemSchema>;
+export const NOTE_FLAG = "This is not a rule. It never affects the schedule. Dismiss it, or turn it into a rule.";
 export type ProposeItem = z.infer<typeof proposeItem>;
 
 /** Stores proposed rules. Nothing proposed here is ever used by the solver until confirmed. */
-export async function proposeRules(owner: string, items: ProposeItem[]): Promise<ProposeResult> {
-  if (items.length > MAX_RULES_PER_CALL) {
+export async function proposeRules(
+  owner: string,
+  items: ProposeItem[],
+  noteItems: NoteItem[] = [],
+): Promise<ProposeResult> {
+  if (items.length + noteItems.length > MAX_RULES_PER_CALL) {
     refuse(`That is too many rules at once (limit ${MAX_RULES_PER_CALL}). Send them in smaller batches.`, "too_many");
   }
   return getDb().transaction(async (tx) => {
@@ -226,7 +255,7 @@ export async function proposeRules(owner: string, items: ProposeItem[]): Promise
     if (!week) refuse("There is no week yet. Set up your restaurant first.", "no_week");
     const staffRows = await tx.select().from(staff).where(eq(staff.ownerEmail, owner));
     const existing = await tx.select().from(rules).where(eq(rules.ownerEmail, owner));
-    if (existing.length + items.length > MAX_RULES_PER_OWNER) {
+    if (existing.length + items.length + noteItems.length > MAX_RULES_PER_OWNER) {
       refuse(`You already have ${existing.length} rules; the limit is ${MAX_RULES_PER_OWNER}.`, "too_many");
     }
     const seen = new Set(existing.map((r) => `${r.staffId}|${r.severity}|${r.kind}|${r.details}`));
@@ -289,13 +318,52 @@ export async function proposeRules(owner: string, items: ProposeItem[]): Promise
             : ruleText({ kind, severity: item.severity, details }, person?.name ?? item.staffName ?? "Someone"),
       });
     }
+    // Messages that are not rules become flagged note cards. They are stored with a kind the
+    // solver does not know, can never be confirmed as they stand, and are only turned into a
+    // rule when the manager edits and saves them.
+    const seenNotes = new Set(
+      existing.filter((r) => r.kind === "note").map((r) => (r.source ?? "").trim().toLowerCase()),
+    );
+    let notes = 0;
+    for (const n of noteItems) {
+      const source = n.source.trim();
+      const dedupe = source.toLowerCase();
+      if (seenNotes.has(dedupe)) {
+        dupes++;
+        continue;
+      }
+      seenNotes.add(dedupe);
+      const person = n.staffName ? resolveStaff(staffRows, n.staffName) : null;
+      const id = `ru_${crypto.randomUUID()}`;
+      const details: RuleDetails = n.summary ? { summary: n.summary.trim() } : {};
+      await tx.insert(rules).values({
+        id,
+        ownerEmail: owner,
+        staffId: person?.ok ? person.staff.id : "",
+        severity: "soft",
+        kind: "note",
+        details: JSON.stringify(details),
+        source,
+        status: "proposed",
+        flag: NOTE_FLAG,
+      });
+      notes++;
+      out.push({
+        id,
+        needsAPerson: false,
+        flag: NOTE_FLAG,
+        text: noteText(source, details, person?.ok ? person.staff.name : (n.staffName ?? null)),
+      });
+    }
     return {
-      stored: out.length,
+      stored: out.length - notes,
+      notes,
       flagged,
       duplicatesSkipped: dupes,
       cards: out,
       message:
-        `${out.length} proposed rule(s) are waiting for the manager to confirm.` +
+        `${out.length - notes} proposed rule(s) are waiting for the manager to confirm.` +
+        (notes ? ` ${notes} message(s) were not rules and are kept as notes under "Needs your eye"; they do not affect the schedule.` : "") +
         (flagged ? ` ${flagged} need attention (shown flagged on the cards).` : "") +
         (dupes ? ` ${dupes} duplicate(s) skipped.` : ""),
     };
@@ -326,7 +394,9 @@ export async function confirmRules(
     }
     if (!input.all && ok.length === 0 && flagged.length > 0) {
       refuse(
-        "That rule needs a person or more detail first. Edit it, then confirm.",
+        flagged.every((r) => r.kind === "note")
+          ? "That is a note, not a rule. Turn it into a rule first, or dismiss it."
+          : "That rule needs a person or more detail first. Edit it, then confirm.",
         "rule_needs_attention",
         { flagged: flagged.map((r) => ({ id: r.id, flag: r.flag })) },
       );

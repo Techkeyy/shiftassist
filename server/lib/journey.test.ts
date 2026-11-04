@@ -122,6 +122,67 @@ describe("propose-rules", () => {
   });
 });
 
+describe("messages that are not rules", () => {
+  const owner = "notes@example.test";
+  const SWAP = "Ana asked if she can swap with Tom on saturday";
+  it("are stored as flagged note cards with their source, never reach the solver, and can be dismissed or turned into a rule", async () => {
+    const ids = await setup(owner, ["Ana", "Tom", "Cy", "Di"]);
+    const before = await buildWeek(owner);
+    const filledBefore = before.filled;
+
+    const r = await proposeRules(
+      owner,
+      [{ staffName: "Cy", kind: "unavailable", severity: "hard", days: ["fri"], source: "Cy: no Fridays" }],
+      [{ source: SWAP, staffName: "Ana" }, { source: SWAP }],
+    );
+    // The same sentence twice is stored once.
+    expect(r.stored).toBe(1);
+    expect(r.notes).toBe(1);
+    expect(r.duplicatesSkipped).toBe(1);
+
+    const cards = await listRuleCards(owner);
+    const note = cards.find((c) => c.kind === "note")!;
+    expect(note.source).toBe(SWAP);
+    expect(note.flag).toMatch(/not a rule/i);
+    expect(note.status).toBe("proposed");
+    expect(note.staffName).toBe("Ana");
+    expect(note.text).toContain("swap with Tom");
+
+    // Not a rule: the solver never sees it, whatever its status.
+    expect((await loadSchedule(getDb(), owner)).input.rules).toHaveLength(0);
+    // It cannot be confirmed, singly or in bulk, and it does not block the next step.
+    await expect(confirmRules(owner, { ids: [note.id] })).rejects.toThrow(/note, not a rule/);
+    const all = await confirmRules(owner, { all: true });
+    expect(all.confirmed).toBe(1); // only Cy's real rule
+    expect((await listRuleCards(owner)).find((c) => c.id === note.id)!.status).toBe("proposed");
+    const view = await buildWeekView(owner);
+    expect(view.nextStep).not.toBe("confirm");
+
+    // A forced confirmation still does not reach the solver.
+    await getDb().update(rules).set({ status: "confirmed" }).where(eq(rules.id, note.id));
+    const loaded = await loadSchedule(getDb(), owner);
+    expect(loaded.input.rules.map((x) => x.id)).not.toContain(note.id);
+    await getDb().update(rules).set({ status: "proposed" }).where(eq(rules.id, note.id));
+    const rebuilt = await buildWeek(owner);
+    expect(rebuilt.proposedRulesIgnored).toBe(0);
+    expect(rebuilt.filled).toBeGreaterThanOrEqual(filledBefore - 1);
+
+    // The manager turns it into a real rule: same card, now a confirmed rule.
+    const saved = await saveRule(owner, { id: note.id, staffId: ids.byName("Tom"), kind: "unavailable", severity: "soft", days: ["sat"], source: SWAP });
+    expect(saved.text).toMatch(/Tom/);
+    const turned = (await listRuleCards(owner)).find((c) => c.id === note.id)!;
+    expect(turned.kind).toBe("unavailable");
+    expect(turned.status).toBe("confirmed");
+    expect(turned.flag).toBeNull();
+
+    // A second note can simply be dismissed.
+    await proposeRules(owner, [], [{ source: "Tom says thanks for the cover" }]);
+    const other = (await listRuleCards(owner)).find((c) => c.kind === "note")!;
+    await deleteRule(owner, other.id);
+    expect((await listRuleCards(owner)).some((c) => c.kind === "note")).toBe(false);
+  });
+});
+
 describe("build-week", () => {
   const owner = "build@example.test";
   it("keeps locked shifts and never breaks a confirmed hard rule", async () => {
@@ -156,7 +217,7 @@ describe("build-week", () => {
     await saveRule(o, { staffId: ids.byName("Ann"), kind: "unavailable", severity: "hard", days: ["mon"], source: "Ann: no Monday" });
     const r = await buildWeek(o);
     expect(r.unfilled.length).toBeGreaterThan(0);
-    const mon = r.unfilled.find((u) => u.description.includes("2026-11-09"))!;
+    const mon = r.unfilled.find((u) => u.description.includes("Mon 9 Nov"))!;
     expect(mon.reasons.join(" ")).toMatch(/Ann can't work on Mon/);
     expect(r.fairness.find((p) => p.name === "Ann")).toBeDefined();
   });

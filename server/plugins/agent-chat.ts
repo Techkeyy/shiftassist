@@ -3,8 +3,10 @@ import {
   createAgentChatPlugin,
   loadActionsFromStaticRegistry,
 } from "@agent-native/core/server";
+import { createError } from "h3";
 
 import actionsRegistry from "../../.generated/actions-registry.js";
+import { consumeAgentTurn, DAILY_LIMIT_MESSAGE } from "../lib/usage.js";
 
 const INITIAL_TOOL_NAMES = [
   "view-screen",
@@ -31,6 +33,22 @@ export default createAgentChatPlugin({
   // scheduling rules on the server. No raw database tools, no code execution.
   frameworkTools: { database: "off" },
   codeExecution: { production: "off" },
+  // Public judges and real users spend the owner's model credit, so each account gets a daily
+  // number of assistant turns. Only the assistant stops; the board, rules, solver and sharing are
+  // plain actions and never pass through here. Follow-up steps of a turn already counted are not
+  // counted again.
+  prepareRequest: async ({ ownerEmail, internalContinuation, isBackgroundWorker }) => {
+    if (!ownerEmail || internalContinuation || isBackgroundWorker) return;
+    const turn = await consumeAgentTurn(ownerEmail);
+    if (!turn.allowed) {
+      throw createError({
+        statusCode: 429,
+        statusMessage: DAILY_LIMIT_MESSAGE,
+        message: DAILY_LIMIT_MESSAGE,
+        data: { code: "daily_assistant_limit", retryable: false },
+      });
+    }
+  },
   resolveOrgId: async (event) => (await getOrgContext(event)).orgId,
   systemPrompt: `You are the ShiftAssist assistant. ShiftAssist helps the manager of a small restaurant build a fair weekly staff rota. Talk to the manager in plain words: say "shift", "rule", "week" and people's names, never table names, ids, tools or code.
 
@@ -42,6 +60,7 @@ How the app works
 Turning staff messages into rules
 - The manager pastes the staff's own messages. Call propose-rules once with every rule you can find. Each rule keeps the staff member's original sentence in "source". Proposed rules are NOT used until the manager confirms them.
 - NEVER confirm rules yourself. Only the manager does, with the Confirm buttons, or by saying so in this chat ("confirm them all"); even then confirm-rules asks them to approve.
+- A staff message that is NOT a rule (for example "Ana asked if she can swap with Tom on saturday", a question, thanks) must still be kept: pass it in the "notes" list of propose-rules with the original sentence. It appears under "Needs your eye" as a note, never changes the schedule, and the manager can dismiss it or turn it into a rule. Then tell the manager in one sentence what you did not turn into a rule. Never answer such a message in chat only.
 - If a message is ambiguous (which day, which time, how strict) or a name does not match anyone on staff, say so and ask rather than guess. A name that is not on the staff list must still go into propose-rules (use the name as written); it appears as a card marked "needs a person". Never silently drop a message.
 - Express dates relative to the week on the board (get-week gives the week start date and each day's weekday). Use weekday names for repeating rules ("every Friday") and a real date (YYYY-MM-DD from that week) only for a one-off ("this Thursday", "next Tuesday"). If the manager's wording could mean a day outside the board's week, say so.
 - hard = the person cannot or must not (medical, school run, "can't", "never"). soft = a preference ("prefer", "would rather", "if possible"). When unsure, ask.

@@ -119,7 +119,7 @@ export async function buildWeekView(owner: string): Promise<WeekView> {
   }
 
   const confirmed = ruleCards.filter((r) => r.status === "confirmed").length;
-  const proposed = ruleCards.filter((r) => r.status === "proposed").length;
+  const proposed = ruleCards.filter((r) => r.status === "proposed" && r.kind !== "note").length;
   const placed = assignments.length;
   let nextStep: WeekView["nextStep"];
   if (proposed > 0) nextStep = "confirm";

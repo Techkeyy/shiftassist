@@ -10,7 +10,15 @@ Kill test, director-observed 2026-11-04, local dev build only:
 - Caveat: the dev agent has a shell and could bypass; its restraint is not enforcement. In production, enforcement rests on `frameworkTools: { database: "off" }` and code execution off, which must be set and proven.
 - Unverified: real mouse drag (builder used synthetic drag events), repair with non-empty result, production, two real accounts.
 
-Solver: director re-ran 26 of 26 passing, no skips or `any`. Typecheck clean per builder, not re-run by director. Mutation check of the repair fallback test NOT done: running it would hot-reload the shared dev server under the product builder. Do it once the builder finishes.
+Solver: mutation check done by director: disabling the repair fallback makes its test fail, then restored. Full suite re-run by director after journey commit 6e018d0: 47 of 47 pass.
+
+Production: `pnpm build` succeeds in about 3 minutes (preset node). A local production run refuses to serve without hosted Postgres ("This deployed server has no hosted database"), so fresh-account and enforcement proof must happen on the real deployment. `agent-native start` fails on Windows (unquoted `C:\Program Files` path); `node --env-file=.env .output/server/index.mjs` works.
+
+Deploy target: Vercel (project shiftassist, scope techkeyys-projects) plus Neon. Owner runs `node scripts/vercel-env.cjs` because the permission system blocks the director writing secrets to Vercel. Neon password appeared in the session transcript through a file-change notice: owner must reset it in Neon before final submission, update `.deploy.local`, and re-run the script. Steps: `pnpm migrate:production` with DATABASE_URL set, `NITRO_PRESET=vercel pnpm build`, `vercel deploy --prebuilt --prod`.
+
+Before deploy: review netlify.toml, which inherits template analytics IDs (GA, GTM) and trusted origins for agent-native.com; these must not ship. Set `AUTH_REQUIRE_EMAIL_VERIFICATION=0` knowingly, with the daily turn cap as the abuse limit. Ensure `AGENT_PROD_CODE_EXECUTION` is unset, and set a spend cap on the DeepSeek key.
+
+Journey builder findings still needing director proof: journey walked locally through UI per its report. Director has only independently observed move-shift. Claims of steps 2 to 10 are SUPPORTED, not PROVEN, until production UAT.
 
 Design bugs seen: at about 800 px the board pushes the chat panel off-screen.
 

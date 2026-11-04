@@ -83,8 +83,17 @@ export function refuse(
   });
 }
 
+/** "Dinner server on Fri 13 Nov, 17:00 to 23:00". People never see the raw ISO date. */
 export function describeSlot(slot: Slot): string {
-  return `${slot.label ?? slot.role} on ${slot.date} ${slot.start}-${slot.end}`;
+  return `${slot.label ?? slot.role} on ${shortDay(slot.date)}, ${slot.start} to ${slot.end}`;
+}
+
+const WD_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MON_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** "Fri 13 Nov" for a YYYY-MM-DD date. */
+export function shortDay(date: string): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  return `${WD_SHORT[d.getUTCDay()]} ${d.getUTCDate()} ${MON_SHORT[d.getUTCMonth()]}`;
 }
 
 export async function loadWeekRow(
@@ -141,7 +150,10 @@ export async function loadSchedule(
     role: r.role,
     ...(r.label ? { label: r.label } : {}),
   }));
-  const ruleList: Rule[] = ruleRows.map(
+  // Notes and unclear cards are not rules. Even if one were ever marked confirmed, it is skipped here.
+  const ruleList: Rule[] = ruleRows
+    .filter((r) => ["unavailable", "no_double", "max_shifts", "min_rest"].includes(r.kind))
+    .map(
     (r) =>
       ({
         ...(JSON.parse(r.details) as object),
@@ -419,10 +431,10 @@ export async function buildWeek(owner: string): Promise<BuildResult> {
     const slotById = new Map(data.input.slots.map((s) => [s.id, s]));
     const nameOf = new Map(data.input.staff.map((s) => [s.id, s.name]));
     const proposedRows = await tx
-      .select({ id: rules.id })
+      .select({ id: rules.id, kind: rules.kind })
       .from(rules)
       .where(and(eq(rules.ownerEmail, owner), eq(rules.status, "proposed")));
-    const proposedRulesIgnored = proposedRows.length;
+    const proposedRulesIgnored = proposedRows.filter((r) => r.kind !== "note").length;
 
     const total = data.input.slots.length;
     const filled = result.assignments.length;
