@@ -103,7 +103,7 @@ Confirming rules, applying cover and editing rules are marked as needing approva
 | Assistant limit reached | Plain message; everything else keeps working (tested) |
 | Same input to the solver twice, in any order | Identical result (tested) |
 
-56 automated tests cover the solver and the server rules.
+59 automated tests cover the solver and the server rules.
 
 **Rules you confirm are enforced by code on the server, not by the assistant's good behaviour.**
 
