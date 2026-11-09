@@ -69,6 +69,10 @@ Open http://localhost:8080 and choose "Continue as local dev". Local data lives 
 pnpm exec vitest run
 ```
 
+## Where to look
+
+The ShiftAssist code is in `lib/solver/`, `server/lib/`, `server/db/`, `actions/`, `app/components/board/`, `app/routes/` (`home`, `team`, `rules`, `week`, `share`) and `server/lib/landing-html.ts`. The rest is the Agent-Native app shell: `.agents/skills/` are the framework's skills bundled into the assistant, `app/i18n/` holds the shell's interface translations, and routes such as `settings`, `database` and `extensions` are framework pages kept so the shell works.
+
 ## Architecture
 
 | Part | Job |
