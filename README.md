@@ -2,7 +2,7 @@
 
 Your staff's texts in. A fair week out. A rota app for small restaurants and other shift teams: an assistant reads your staff's messages, code builds the week, and every shift can explain itself.
 
-**[Live app](https://shiftassist.vercel.app)** · [Screenshots](docs/screens/) · [How I tried to break it](#how-i-tried-to-break-it)
+**[Live app](https://shiftassist.vercel.app)** · **[Demo video (3 min)](https://clips.agent-native.com/share/LCBy6Jdru6u9)** · [Screenshots](docs/screens/) · [How I tried to break it](#how-i-tried-to-break-it)
 
 > *"Who said they can't do Fridays again? And why does Sam keep getting the late shift?"*
 
