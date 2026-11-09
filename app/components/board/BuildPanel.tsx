@@ -10,10 +10,14 @@ export function BuildControl({
   week,
   onResult,
   onError,
+  primary,
+  big,
 }: {
   week: WeekView;
   onResult: (r: BuildResult) => void;
   onError: (message: string) => void;
+  primary?: boolean;
+  big?: boolean;
 }) {
   const build = useActionMutation("build-week");
   const [confirming, setConfirming] = useState(false);
@@ -42,17 +46,17 @@ export function BuildControl({
   return (
     <button
       type="button"
-      className={week.nextStep === "build" ? btnPrimary : btnSecondary}
+      className={`${primary ? btnPrimary : btnSecondary}${big ? " btn-big" : ""}`}
       disabled={build.isPending}
       data-testid="build-week"
       onClick={() => (placed > 0 ? setConfirming(true) : run())}
     >
-      {build.isPending ? "Building the week..." : placed > 0 ? "Build week again" : "Build week"}
+      {build.isPending ? "Building the week..." : placed > 0 ? "Build the week again" : "Build my week"}
     </button>
   );
 }
 
-/** What the build did, in one line; details only when something needs a person. */
+/** What the build did, in plain words; details only when something needs a person. */
 export function BuildResultLine({
   result,
   onSelectSlot,
@@ -62,36 +66,33 @@ export function BuildResultLine({
   onSelectSlot: (slotId: string) => void;
   onDismiss: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   const issues = result.unfilled.length + result.lockedProblems.length;
+  const all = result.unfilled.length === 0;
   return (
-    <div role="status" data-testid="build-result" className="board-note" data-kind={issues ? "problem" : "ok"}>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="font-medium">
-          Week built. Filled {result.filled} of {result.total} shifts.
-          {result.lockedKept ? ` ${result.lockedKept} locked kept.` : ""}
-          {result.unfilled.length ? ` ${result.unfilled.length} could not be filled.` : ""}
-        </span>
+    <div role="status" data-testid="build-result" className="board-note build-result" data-kind={issues ? "problem" : "ok"}>
+      <div className="min-w-0 flex-1">
+        <p className="font-medium">
+          {all
+            ? `Everyone is placed. ${result.filled} of ${result.total} shifts filled, and every confirmed rule is kept.`
+            : `${result.filled} of ${result.total} shifts filled. ${result.unfilled.length} ${result.unfilled.length === 1 ? "shift has" : "shifts have"} nobody on ${result.unfilled.length === 1 ? "it" : "them"}.`}
+          {result.lockedKept ? ` ${result.lockedKept} locked ${result.lockedKept === 1 ? "shift was" : "shifts were"} kept.` : ""}
+          {result.proposedRulesIgnored ? ` ${result.proposedRulesIgnored} ${result.proposedRulesIgnored === 1 ? "rule is" : "rules are"} still waiting for your check and ${result.proposedRulesIgnored === 1 ? "was" : "were"} not used.` : ""}
+        </p>
         {issues ? (
-          <button type="button" className="link" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-            {open ? "Hide details" : "Show details"}
-          </button>
+          <div className="mt-1 max-h-40 overflow-auto space-y-1 text-[0.9375rem]">
+            {result.lockedProblems.map((p) => (
+              <p key={p.slotId} className="problem-line">The locked shift {p.description} breaks a rule: {p.problems.join(" ")}</p>
+            ))}
+            {result.unfilled.map((u) => (
+              <p key={u.slotId} data-testid="unfilled-shift">
+                <button type="button" className="link font-medium" onClick={() => onSelectSlot(u.slotId)}>{u.description}</button>
+                <span className="hint">: {u.reasons.join(" ")}</span>
+              </p>
+            ))}
+          </div>
         ) : null}
-        <button type="button" className="link ml-auto" onClick={onDismiss}>Dismiss</button>
       </div>
-      {open ? (
-        <div className="mt-1 max-h-40 overflow-auto space-y-1 text-[0.9375rem]">
-          {result.lockedProblems.map((p) => (
-            <p key={p.slotId} className="problem-line">Locked {p.description} breaks a rule: {p.problems.join(" ")}</p>
-          ))}
-          {result.unfilled.map((u) => (
-            <p key={u.slotId} data-testid="unfilled-shift">
-              <button type="button" className="link font-medium" onClick={() => onSelectSlot(u.slotId)}>{u.description}</button>
-              <span className="hint">: {u.reasons.join(" ")}</span>
-            </p>
-          ))}
-        </div>
-      ) : null}
+      <button type="button" className="link shrink-0" onClick={onDismiss}>Dismiss</button>
     </div>
   );
 }

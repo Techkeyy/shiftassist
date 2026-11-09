@@ -2,7 +2,15 @@
 
 Read this first if you are taking over. Standard: `Desktop/skill/master director skill.txt`. Research: `agent-native-idea-research.md` (the idea was called Fair Shift there).
 
-**Authoritative status: BUILDING. Deployed at https://shiftassist.vercel.app (commit 9140859 code). Live site proven only for: pages load, logged-out action calls return 401, no secrets or template analytics IDs in the home page HTML. Core Outcome NOT proven on production. Live sign-up, model default, agent tools, rules enforcement and two-account isolation are all untested there.**
+**Authoritative status: UAT READY for owner. Deployed at https://shiftassist.vercel.app (commit 93bb67a). Full journey walked locally on a new account with real DeepSeek by builder (report, director reviewed screens, re-ran 56 of 56 tests). On production: logged-out actions return 401, landing, fonts and staff CSS load; owner confirmed sign-up and that a new account gets deepseek-flash. Core Outcome NOT yet proven on production: paste, agent move and refusal, publish, and two-account isolation need owner UAT.**
+
+README.md drafted by director (2026-11-09) from verified facts; re-audit links, test count, and journey wording against the final guided UI before publishing. No demo link yet. Repo `Techkeyy/shiftassist` doesn't exist on GitHub; creating a public repo needs owner's go-ahead. Repo check before publish: secrets, `.deploy.local`, `.vercel`, logs, docs/screens test emails.
+
+2026-11-09 10:16 UTC: UX builder hit a weekly usage limit on Nov 4 mid-change (Board.tsx and Welcome.tsx deleted, new routes /team /rules /week /share, uncommitted, likely non-compiling). Resumed with order to reach a working state first and report within about 3 hours. If it fails again: last good commit is 93bb67a, which is live; either finish the guided routes directly or `git stash` to get back to it. Deadline 2026-11-10 07:59 UTC. Owner must record Clips demo and submit; reserve the last 4 hours for deploy, UAT, README, demo, submission.
+
+Owner rejected the live UX as confusing and not directive. New order: `docs/ux-brief.md` (product page, Home with one next step, guided /team /rules /week /share). Comprehension outranks visuals. Builder running. Director's review must be a cold walk, not a look at screenshots.
+
+Open decisions and small bugs: cover flow can reassign a locked shift while move-shift refuses (keep: manager's explicit choice, but lock marker is lost; state this honestly); Stop sharing has no confirm; Open shifts row clips on short viewports; closing cover drawer with X lets it reopen after reload; moves have ~0.6 s wait with no optimistic update (measured locally in dev). Neon password reset still owed by owner before submission. WCAG contrast not recomputed after round 2 tokens.
 
 Owner evidence (2026-11-04, live, fresh account): sign-up works; model shows `deepseek-flash` and the assistant replied, so the org-default risk did not occur. Bug: pasted messages stuck on "reading" and never appeared in chat (sent to UI builder). Owner rejected the current look: design direction is `docs/design-brief.md` ("The Pass"), to be built after the UI builder finishes.
 

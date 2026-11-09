@@ -90,7 +90,7 @@ function LayoutShell({ children }: LayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const isChatRoute = isChatPathname(location.pathname);
   // The week board owns its own slim top bar; no sidebar, no framework header.
-  const isBoard = location.pathname.startsWith("/board");
+  const isBoard = /^\/(board|home|team|rules|week|share)(\/|$)/.test(location.pathname);
   // Settings brings its own navigation, header, and agent toggle, so it
   // renders full width.
   const settingsOwnsChrome = isSettingsPathname(location.pathname);
@@ -145,7 +145,7 @@ function LayoutShell({ children }: LayoutProps) {
   const chatHeaderInAppBar =
     isChatRoute && (pageTitle != null || pageActions != null);
   const openMobileSidebar = () => setMobileSidebarOpen(true);
-  const ownsToolbar = routeOwnsToolbar(location.pathname);
+  const ownsToolbar = !isBoard && routeOwnsToolbar(location.pathname);
   const contentFrame = (
     <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
       {isChatRoute ? (

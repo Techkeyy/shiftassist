@@ -1,5 +1,5 @@
 import { useActionMutation } from "@agent-native/core/client/hooks";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { WeekView } from "../../../server/lib/week-view";
 import { btnDanger, btnPrimary, btnSecondary, errText, inputCls, nextMonday } from "./format";
@@ -46,10 +46,15 @@ export function SetupForm({
   existing,
   onDone,
   onCancel,
+  formId,
+  onBusy,
 }: {
   existing: WeekView | null;
   onDone: () => void;
   onCancel: (() => void) | null;
+  /** When set, the screen's footer button submits this form and the form shows no buttons of its own. */
+  formId?: string;
+  onBusy?: (busy: boolean) => void;
 }) {
   const editing = Boolean(existing?.hasWeek && !existing.week?.isSample);
   const replacingSample = Boolean(existing?.week?.isSample);
@@ -81,6 +86,7 @@ export function SetupForm({
   const [problem, setProblem] = useState<string | null>(null);
   const [confirmText, setConfirmText] = useState<string | null>(null);
   const save = useActionMutation("save-setup");
+  useEffect(() => onBusy?.(save.isPending), [save.isPending, onBusy]);
 
   function patchStaff(i: number, patch: Partial<StaffRow>) {
     setStaff((rows) => rows.map((r, k) => (k === i ? { ...r, ...patch } : r)));
@@ -93,12 +99,12 @@ export function SetupForm({
     setProblem(null);
     for (const [i, s] of staff.entries()) {
       if (!s.name.trim()) return setProblem(`Person ${i + 1} needs a name.`);
-      if (!s.roles.split(",").some((r) => r.trim())) return setProblem(`${s.name} needs at least one role, like cook or server.`);
+      if (!s.roles.split(",").some((r) => r.trim())) return setProblem(`${s.name} needs at least one job, like cook or server.`);
       if (!Number.isInteger(Number(s.maxShifts)) || s.maxShifts === "") return setProblem(`${s.name}: max shifts must be a whole number.`);
     }
     for (const [i, p] of pattern.entries()) {
       if (!p.name.trim()) return setProblem(`Shift ${i + 1} needs a name.`);
-      if (!p.role.trim()) return setProblem(`"${p.name}" needs a role.`);
+      if (!p.role.trim()) return setProblem(`"${p.name}" needs a job.`);
       if (p.days.length === 0) return setProblem(`"${p.name}" needs at least one day.`);
       if (p.start === p.end) return setProblem(`"${p.name}" starts and ends at the same time.`);
     }
@@ -139,67 +145,66 @@ export function SetupForm({
 
   return (
     <form
-      className="setup mx-auto max-w-3xl space-y-6 p-4 sm:p-6"
+      id={formId}
+      className="setup space-y-6"
       onSubmit={(e) => {
         e.preventDefault();
         submit(false);
       }}
       aria-label="Set up my restaurant"
     >
-      <div>
-        <h1 className="display setup-title">{editing ? "Edit staff and shifts" : "Set up my restaurant"}</h1>
-        <p className="hint mt-1">
-          Add your people, then describe a typical week. You can change both later.
-        </p>
-      </div>
-
       <label className="setup-field block">
-        <span>Week starts on</span>
+        <span>The week starts on</span>
         <input type="date" required className={`${inputCls} mt-1 max-w-48`} value={weekStart} onChange={(e) => setWeekStart(e.target.value)} />
       </label>
 
       <section aria-labelledby="staff-h" className="space-y-3">
-        <h2 id="staff-h" className="display setup-h">Your staff</h2>
+        <h2 id="staff-h" className="display setup-h">Your people</h2>
         {staff.map((s, i) => (
-          <div key={i} className="grid gap-2 setup-row sm:grid-cols-6" data-testid="staff-setup-row">
-            <label className="setup-field sm:col-span-2">
+          <div key={i} className="setup-row person-row" data-testid="staff-setup-row">
+            <label className="setup-field">
               Name
               <input className={inputCls} value={s.name} onChange={(e) => patchStaff(i, { name: e.target.value })} aria-label={`Person ${i + 1} name`} />
             </label>
-            <label className="setup-field sm:col-span-2">
-              Roles (comma separated)
+            <label className="setup-field">
+              Jobs they can do
               <input className={inputCls} placeholder="cook, server" value={s.roles} onChange={(e) => patchStaff(i, { roles: e.target.value })} aria-label={`Person ${i + 1} roles`} />
             </label>
             <label className="setup-field">
-              Max shifts / week
+              Most shifts a week
               <input className={inputCls} inputMode="numeric" value={s.maxShifts} onChange={(e) => patchStaff(i, { maxShifts: e.target.value })} aria-label={`Person ${i + 1} max shifts`} />
             </label>
-            <label className="setup-field">
-              Hourly rate (optional)
-              <input className={inputCls} inputMode="numeric" value={s.hourlyRate} onChange={(e) => patchStaff(i, { hourlyRate: e.target.value })} aria-label={`Person ${i + 1} hourly rate`} />
-            </label>
-            <label className="setup-field sm:col-span-2">
-              Overtime after (hours a week, optional)
-              <input className={inputCls} inputMode="numeric" value={s.overtimeAfterHours} onChange={(e) => patchStaff(i, { overtimeAfterHours: e.target.value })} aria-label={`Person ${i + 1} overtime hours`} />
-            </label>
-            <div className="flex items-end sm:col-span-4 sm:justify-end">
+            <div className="person-remove">
               {staff.length > 1 ? (
-                <button type="button" className={btnDanger} onClick={() => setStaff((r) => r.filter((_, k) => k !== i))}>
+                <button type="button" className={btnDanger} onClick={() => setStaff((r) => r.filter((_, k) => k !== i))} aria-label={`Remove person ${i + 1}`}>
                   Remove
                 </button>
               ) : null}
             </div>
+            <details className="person-pay">
+              <summary>Pay details (optional, for overtime costs)</summary>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="setup-field">
+                  Pay per hour
+                  <input className={inputCls} inputMode="numeric" value={s.hourlyRate} onChange={(e) => patchStaff(i, { hourlyRate: e.target.value })} aria-label={`Person ${i + 1} hourly rate`} />
+                </label>
+                <label className="setup-field">
+                  Overtime starts after this many hours a week
+                  <input className={inputCls} inputMode="numeric" value={s.overtimeAfterHours} onChange={(e) => patchStaff(i, { overtimeAfterHours: e.target.value })} aria-label={`Person ${i + 1} overtime hours`} />
+                </label>
+              </div>
+            </details>
           </div>
         ))}
         <button type="button" className={btnSecondary} onClick={() => setStaff((r) => [...r, blankStaff()])}>
-          Add a person
+          Add another person
         </button>
       </section>
 
       <section aria-labelledby="pattern-h" className="space-y-3">
-        <h2 id="pattern-h" className="display setup-h">A typical week</h2>
+        <h2 id="pattern-h" className="display setup-h">Which shifts do you need?</h2>
         <p className="hint">
-          One line per kind of shift, for example "Dinner server, server, 17:00 to 23:00, Mon to Sat, 2 people". A shift that ends at or before its start runs past midnight.
+          One row per kind of shift. For example: "Dinner server", job "server", 5pm to 11pm, Monday to Saturday, 2 people. A shift that ends before it starts runs past midnight.
         </p>
         {pattern.map((p, i) => (
           <div key={i} className="grid gap-2 setup-row sm:grid-cols-6" data-testid="pattern-setup-row">
@@ -208,7 +213,7 @@ export function SetupForm({
               <input className={inputCls} value={p.name} onChange={(e) => patchPattern(i, { name: e.target.value })} aria-label={`Shift ${i + 1} name`} />
             </label>
             <label className="setup-field sm:col-span-2">
-              Role needed
+              Job needed
               <input className={inputCls} placeholder="server" value={p.role} onChange={(e) => patchPattern(i, { role: e.target.value })} aria-label={`Shift ${i + 1} role`} />
             </label>
             <label className="setup-field">
@@ -238,7 +243,7 @@ export function SetupForm({
               </div>
             </fieldset>
             <label className="setup-field">
-              How many people
+              People needed
               <input className={inputCls} inputMode="numeric" value={p.count} onChange={(e) => patchPattern(i, { count: e.target.value })} aria-label={`Shift ${i + 1} people`} />
             </label>
             <div className="flex items-end justify-end">
@@ -251,7 +256,7 @@ export function SetupForm({
           </div>
         ))}
         <button type="button" className={btnSecondary} onClick={() => setPattern((r) => [...r, blankPattern()])}>
-          Add a shift
+          Add another shift
         </button>
       </section>
 
@@ -277,21 +282,23 @@ export function SetupForm({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
-        {confirmText === null ? (
-          <button type="submit" className={btnPrimary} disabled={save.isPending}>
-            {save.isPending ? "Saving..." : editing ? "Save changes" : "Save and continue"}
-          </button>
-        ) : null}
-        {onCancel ? (
-          <button type="button" className={btnSecondary} onClick={onCancel}>
-            Cancel
-          </button>
-        ) : null}
-      </div>
+      {formId ? null : (
+        <div className="flex flex-wrap gap-2">
+          {confirmText === null ? (
+            <button type="submit" className={btnPrimary} disabled={save.isPending}>
+              {save.isPending ? "Saving..." : editing ? "Save changes" : "Save and continue"}
+            </button>
+          ) : null}
+          {onCancel ? (
+            <button type="button" className={btnSecondary} onClick={onCancel}>
+              Cancel
+            </button>
+          ) : null}
+        </div>
+      )}
       {replacingSample ? (
         <p className="setup-field text-muted-foreground">
-          You are replacing the sample restaurant. You will be asked to confirm before anything is removed.
+          You are replacing the sample restaurant. We ask you to confirm before anything is removed.
         </p>
       ) : null}
     </form>

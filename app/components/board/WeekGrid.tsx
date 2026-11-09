@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import type { WeekView } from "../../../server/lib/week-view";
 import { cn } from "@/lib/utils";
 import { Hatch, HatchDefs, Pin, Tally } from "./art";
-import { bandOf, dayLabel, dayParts, slotTime, splitBandLabel } from "./format";
+import { bandOf, dayLabel, dayParts, plainTime, timeWords } from "./format";
 
 type SlotView = WeekView["slots"][number];
 type Fairness = NonNullable<WeekView["fairness"]>;
@@ -31,8 +31,8 @@ export function SlotChip({
   register?: (el: HTMLElement | null) => void;
 }) {
   const band = bandOf(slot.start);
-  const [bandWord, rest] = splitBandLabel(slot.label, band);
-  const label = `${slot.description}, ${slot.start} to ${slot.end}${slot.staffName ? `, ${slot.staffName}` : ", open"}${slot.locked ? ", locked" : ""}${changed ? ", changed" : ""}`;
+  const bandWord = band === "lunch" ? "Lunch" : "Dinner";
+  const label = `${slot.description}, ${timeWords(slot.start, slot.end)}${slot.staffName ? `, ${slot.staffName}` : ", open"}${slot.locked ? ", locked" : ""}${changed ? ", changed" : ""}`;
   return (
     <div
       role="button"
@@ -63,18 +63,17 @@ export function SlotChip({
         }
       }}
       className="slip"
+      title={`${slot.label}, ${timeWords(slot.start, slot.end)}`}
     >
       {changed ? <span className="docket-flag" aria-hidden="true" /> : null}
       <span className="slip-top">
         <span className="slip-name">
           {slot.locked ? <Pin className="slip-pin" /> : null}
           {showPerson ? <span className="slip-person">{slot.staffName ?? "Open"}: </span> : null}
-          {bandWord ? <span className="nm-band">{bandWord}</span> : null}
-          {rest}
+          {bandWord} {plainTime(slot.start, slot.end)}
         </span>
-        <span className="slip-time">{slotTime(slot.start, slot.end)}</span>
       </span>
-      {changed ? <span className="slip-sub">Changed</span> : !slot.staffId && !showPerson ? <span className="slip-sub">Open</span> : null}
+      {changed ? <span className="slip-sub">Changed</span> : !slot.staffId && !showPerson ? <span className="slip-sub">Needs a {slot.role}</span> : null}
     </div>
   );
 }
@@ -93,19 +92,11 @@ export function FairnessLine({
   average: number;
   max: number;
 }) {
-  // Only when at least one whole shift above the engine's (fractional) team average.
-  const above = count - average >= 1;
   return (
-    <div className="tally-line" data-above={above ? "true" : undefined}>
+    <div className="tally-line">
       <span className="tally-label">{label}</span>
       <Tally count={count} average={average} max={max} label={`${who}, ${label.toLowerCase()}`} />
       <span className="tally-count">{count}</span>
-      {above ? (
-        <span className="tally-above" title={`Above the team average of ${average.toFixed(1)}`}>
-          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 1L9.5 9H.5z" fill="currentColor" /></svg>
-          Above avg
-        </span>
-      ) : null}
     </div>
   );
 }
@@ -119,6 +110,7 @@ export function WeekGrid({
   pendingSlot,
   onSelect,
   onDropTo,
+  showFairness,
 }: {
   week: WeekView;
   selectedId: string | null;
@@ -126,6 +118,7 @@ export function WeekGrid({
   pendingSlot: string | null;
   onSelect: (id: string | null) => void;
   onDropTo: (slotId: string, staffId: string) => void;
+  showFairness?: boolean;
 }) {
   const [overCell, setOverCell] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -209,12 +202,11 @@ export function WeekGrid({
   return (
     <div className="sheet" data-testid="board-scroll" onMouseLeave={() => setHoverStaff(null)}>
       <HatchDefs />
-      <table className="rota" ref={tableRef} aria-label="Week sheet">
+      <table className="rota" ref={tableRef} aria-label="Your week">
         <thead>
           <tr>
             <th scope="col" className="staff-col">
-              <span className="day-name">Staff</span>
-              <span className="day-date">Shifts this week / limit</span>
+              <span className="day-name">Person</span>
             </th>
             {dates.map((d) => {
               const p = dayParts(d);
@@ -243,9 +235,9 @@ export function WeekGrid({
                   <span className="who">
                     {p.name}
                     <span className="roles" title={p.roles.join(", ")}>{p.roles.join(", ")}</span>
-                    <span className="limit" title="Shifts this week out of the limit">{p.shiftCount}/{p.maxShifts}</span>
+                    <span className="limit" title={`${p.shiftCount} shifts this week. ${p.name} can work up to ${p.maxShifts}.`}>{p.shiftCount} {p.shiftCount === 1 ? "shift" : "shifts"}</span>
                   </span>
-                  {f && avg ? (
+                  {showFairness && f && avg ? (
                     <span data-testid="fairness-person" className="tallies">
                       <FairnessLine label="Closes" who={p.name} count={f.closes} average={avg.closes} max={maxCloses} />
                       <FairnessLine label="Weekends" who={p.name} count={f.weekends} average={avg.weekends} max={maxWeekends} />
@@ -328,7 +320,7 @@ export function WeekGrid({
 /** Tally per person, for the phone drawer. Same engine numbers as the sheet. */
 export function TallyList({ week }: { week: WeekView }) {
   const f: Fairness | null = week.fairness;
-  if (!f) return <p className="hint">Nothing to count until the week is built.</p>;
+  if (!f) return <p className="hint">Nothing to count until your week is built.</p>;
   const maxCloses = Math.max(0, ...f.people.map((p) => p.closes));
   const maxWeekends = Math.max(0, ...f.people.map((p) => p.weekends));
   return (
@@ -405,7 +397,7 @@ export function DayList({
           </select>
         </label>
         {onTally && week.fairness ? (
-          <button type="button" className="btn btn-secondary" onClick={onTally}>Fairness</button>
+          <button type="button" className="btn btn-secondary" onClick={onTally}>Show fairness</button>
         ) : null}
       </div>
       {person ? (

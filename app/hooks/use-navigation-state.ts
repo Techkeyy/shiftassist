@@ -76,6 +76,10 @@ function viewForPath(pathname: string): string {
   if (isChatPathname(pathname)) return "chat";
   if (pathname === HOME_PATH) return "home";
   if (pathname.startsWith("/board")) return "board";
+  if (pathname.startsWith("/team")) return "team";
+  if (pathname.startsWith("/rules")) return "rules";
+  if (pathname.startsWith("/week")) return "week";
+  if (pathname.startsWith("/share")) return "share";
   if (pathname.startsWith("/database")) return "database";
   if (pathname.startsWith("/extensions")) return "extensions";
   if (pathname.startsWith("/observability")) return "observability";
@@ -83,7 +87,6 @@ function viewForPath(pathname: string): string {
     return "agent";
   }
   if (pathname.startsWith("/settings")) return "settings";
-  if (pathname.startsWith("/team")) return "settings";
   return "chat";
 }
 
@@ -93,7 +96,12 @@ function pathForView(view?: string): string {
     case "ask":
       return NEW_CHAT_PATH;
     case "board":
-      return "/board";
+    case "week":
+      return "/week";
+    case "rules":
+      return "/rules";
+    case "share":
+      return "/share";
     case "home":
       return HOME_PATH;
     case "database":
@@ -107,6 +115,8 @@ function pathForView(view?: string): string {
     case "settings":
       return "/settings";
     case "team":
+      return "/team";
+    case "organization":
       return "/settings/organization";
     default:
       return HOME_PATH;

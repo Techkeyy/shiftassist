@@ -19,7 +19,7 @@ For custom branding, keep `server/plugins/agent-native-email-branding.ts` aligne
 
 ## Application state
 
-- `navigation` describes the view and selected ids. Chat is `chat` at `/chat` and `/chat/<threadId>`; the Get started page is `home` at `/home`; `/` opens shared sign-in/signup.
+- `navigation` describes the view and selected ids. Chat is `chat` at `/chat` and `/chat/<threadId>`; Home is `home` at `/home`; `/` opens shared sign-in/signup.
 - Use `navigate` when supported and `view-screen` for a fresh read of visible details; basic navigation is already in `<current-screen>`.
 
 ## Building a domain app
@@ -34,7 +34,7 @@ Before building common workspace or agent UI, read `agent-native-toolkit`; for s
 
 ## ShiftAssist
 
-Staff rota app for small restaurants. The week page is `/board` ("Week" in the sidebar). The solver in `lib/solver/` is pure TypeScript; the model never places a shift. Public rota: `/s/:token` (server-rendered, no login, GET only) and `/api/public/schedule/:token`, both listed in `server/plugins/auth.ts` `publicPaths`.
+Staff rota app for small restaurants. The app is Home (`/home`, the default landing) plus four guided steps, each its own route: `/team` (view `team`), `/rules` (view `rules`), `/week` (view `week`), `/share` (view `share`). `/board` only redirects to the step that matches the week's state. The solver in `lib/solver/` is pure TypeScript; the model never places a shift. Public rota: `/s/:token` (server-rendered, no login, GET only) and `/api/public/schedule/:token`, both listed in `server/plugins/auth.ts` `publicPaths`.
 
 | Action | Use |
 | --- | --- |
@@ -61,5 +61,5 @@ Code rules:
 - Every assignment write goes through `server/lib/assignments.ts` (`moveShift`, `buildWeek`, `applyCover`). Do not write the `shiftassist_*` tables any other way. `loadSchedule` loads CONFIRMED rules only.
 - Every table has `owner_email`, set from `ctx.userEmail`. Never take an owner from client input. The only unscoped read is the public token lookup in `server/lib/publish.ts`.
 - `server/plugins/agent-chat.ts` sets `frameworkTools: { database: "off" }` and `codeExecution.production: "off"`; keep them.
-- The board writes `navigation` (`view: "board"`) and a tab-scoped `selection` (`kind: "shift"`, `slotId`); `view-screen` returns the board snapshot and the selected shift.
+- The steps write `navigation` (`view`: `home`, `team`, `rules`, `week` or `share`) and a tab-scoped `selection` (`kind: "shift"`, `slotId`); `view-screen` returns the week snapshot on any of those views and the selected shift.
 - Verify a write by calling `get-week` again, not from the tool result alone.

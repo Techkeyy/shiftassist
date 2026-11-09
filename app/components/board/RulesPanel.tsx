@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import type { WeekView } from "../../../server/lib/week-view";
 import { Clip, RailBar, Stamp, Zig } from "./art";
+import { StepShell } from "./StepShell";
 import { btnDanger, btnPrimary, btnSecondary, errText, inputCls } from "./format";
 
 type Card = WeekView["rules"][number];
@@ -17,7 +18,7 @@ const DAY_LABELS: [string, number][] = [
 function Badge({ severity }: { severity: "hard" | "soft" }) {
   return (
     <span className="badge" style={{ borderColor: "hsl(var(--rule-strong))" }}>
-      {severity === "hard" ? "Must" : "Preference"}
+      {severity === "hard" ? "Strict rule" : "Preference"}
     </span>
   );
 }
@@ -44,7 +45,7 @@ function EmptyRail() {
           </g>
         ))}
       </svg>
-      <figcaption className="hint">No rules yet. Paste your staff's messages. (Example drawing.)</figcaption>
+      <figcaption className="hint">Nothing here yet. Paste your staff's messages above. (Example drawing.)</figcaption>
     </figure>
   );
 }
@@ -55,6 +56,7 @@ function PasteBox({ week, onAddByHand, compact }: { week: WeekView; onAddByHand:
   const [slow, setSlow] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
   const [limit, setLimit] = useState<string | null>(null);
+  const [readCount, setReadCount] = useState(0);
   const status = useActionQuery("assistant-status", {});
   const cardsNow = week.rules.length;
   const baseline = useRef(0);
@@ -118,6 +120,7 @@ function PasteBox({ week, onAddByHand, compact }: { week: WeekView; onAddByHand:
     }
     baseline.current = cardsNow;
     sawRunning.current = false;
+    setReadCount(body.split(/\n+/).filter((l) => l.trim() && !/^[-=\s]*$/.test(l)).length);
     const opts = {
       message:
         `Here are my staff's messages for the week starting ${week.week?.startDate}. ` +
@@ -130,7 +133,7 @@ ${body}
 --- end ---`,
       chatTarget: "local" as const,
       submit: true,
-      openSidebar: true,
+      openSidebar: false,
     };
     setSentAt(Date.now());
     setSlow(false);
@@ -148,15 +151,34 @@ ${body}
 
   const limitMsg = limit ?? (status.data?.exhausted ? status.data.message : null);
 
+  const sample = week.exampleMessages;
+  const reading = sentAt !== null;
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      {sample && !compact ? (
+        <div className="sample-offer">
+          <button
+            type="button"
+            className={`${btnPrimary} btn-big`}
+            data-testid="use-sample-messages"
+            disabled={reading}
+            onClick={() => {
+              setText(sample);
+              void send(sample);
+            }}
+          >
+            {reading ? "Reading the sample messages..." : "Use the sample messages"}
+          </button>
+          <p className="hint">{sample.split(/\n+/).filter(Boolean).length} made-up texts from the sample team. Or paste your own below.</p>
+        </div>
+      ) : null}
       <label htmlFor="paste-box" className="field-label">
-        Paste staff messages
+        {sample && !compact ? "Or paste your own staff messages" : "Paste your staff's messages here"}
       </label>
       <textarea
         id="paste-box"
         data-testid="paste-box"
-        className={`${inputCls} ${compact ? "min-h-20" : "min-h-32"}`}
+        className={`${inputCls} paste-box ${compact ? "min-h-20" : "min-h-40"}`}
         aria-describedby="paste-help"
         maxLength={MAX_PASTE}
         placeholder={"Paste texts or notes from your staff, one after another.\nFor example: \"Maya: can't do Fridays, school pickup\""}
@@ -164,24 +186,14 @@ ${body}
         onChange={(e) => setText(e.target.value)}
       />
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className={btnPrimary} disabled={!text.trim() || sentAt !== null} onClick={() => void send()}>
-          {sentAt !== null ? "Your assistant is reading..." : "Read these messages"}
+        <button type="button" className={sample && !compact ? btnSecondary : btnPrimary} disabled={!text.trim() || reading} onClick={() => void send()}>
+          {reading ? "Reading..." : "Read these messages"}
         </button>
-        {week.exampleMessages ? (
-          <>
-            <button type="button" className={btnSecondary} disabled={sentAt !== null} onClick={() => { setText(week.exampleMessages ?? ""); void send(week.exampleMessages ?? ""); }}>
-              Read the example messages
-            </button>
-            <button type="button" className={btnSecondary} onClick={() => setText(week.exampleMessages ?? "")}>
-              Put them in the box
-            </button>
-          </>
-        ) : null}
         <span className="hint">
           {text.length}/{MAX_PASTE}
         </span>
       </div>
-      {!text.trim() && sentAt === null ? <p id="paste-help" className="hint">Paste a message above to read it. The example messages are ready to try.</p> : <span id="paste-help" />}
+      {!text.trim() && !reading ? <p id="paste-help" className="hint">Paste what your staff sent you. Nothing is used until you confirm it.</p> : <span id="paste-help" />}
       {limitMsg ? <p role="alert" className="problem-line">{limitMsg}</p> : null}
       {failed ? (
         <div role="alert" className="space-y-2 text-sm">
@@ -189,11 +201,13 @@ ${body}
           <button type="button" className={btnSecondary} onClick={onAddByHand}>Add a rule by hand</button>
         </div>
       ) : null}
-      {sentAt !== null ? (
-        <p role="status" className="hint">
-          Sent to your assistant in the chat panel. Rule cards will appear here for you to check; nothing is used until you confirm it.
-          {slow ? " This is taking a while. Check the chat to see what the assistant says." : ""}
-        </p>
+      {reading ? (
+        <div role="status" className="reading" data-testid="reading-progress">
+          <div className="agent-strip" />
+          <p className="reading-title">Reading {readCount} {readCount === 1 ? "message" : "messages"}...</p>
+          <p className="hint">Each one becomes a card below for you to check. Nothing is used until you confirm it.</p>
+          {slow ? <p className="hint">This is taking a while. It is still working, so you can wait or try again.</p> : null}
+        </div>
       ) : null}
     </div>
   );
@@ -208,11 +222,11 @@ function NoteCardView({ card, week, onError }: { card: Card; week: WeekView; onE
       <Clip className="ticket-clip" />
       <p className="problem-line">
         <ProblemMark />
-        Needs your eye: not a rule
+        This one isn't a rule
       </p>
       {card.source ? <p className="ticket-source">"{card.source}"</p> : null}
       {card.text && card.text !== card.source ? <p className="hint mt-1">{card.text}</p> : null}
-      <p className="hint mt-1">Kept as a note. It does not change the schedule.</p>
+      <p className="hint mt-1">It won't change your week. Dismiss it, or press Turn into a rule if it should.</p>
       <div className="mt-2 flex flex-wrap gap-2">
         <button type="button" className={btnSecondary} onClick={() => setEditing(true)}>Turn into a rule</button>
         <button
@@ -393,7 +407,7 @@ function RuleCardView({
       <Clip className="ticket-clip" />
       <div className="ticket-head flex flex-wrap items-center gap-2">
         <Badge severity={card.severity} />
-        <span className="hint">{proposed ? "Waiting for you" : "In use"}</span>
+        <span className="hint">{proposed ? "Check this one" : "In use"}</span>
         {!proposed ? <Stamp fresh={fresh} index={index ?? 0} /> : null}
       </div>
       {card.source ? <p className="ticket-source">"{card.source}"</p> : null}
@@ -401,7 +415,7 @@ function RuleCardView({
       {needsAttention ? (
         <p className="problem-line mt-1">
           <ProblemMark />
-          <span>Needs a person.{card.flag ? ` ${card.flag}` : ""}</span>
+          <span>{card.flag ? `${card.flag} ` : !card.staffId ? "We couldn't tell who this is for. " : ""}Press Fix this card to sort it out.</span>
         </p>
       ) : null}
       <div className="mt-2 flex flex-wrap gap-2">
@@ -410,7 +424,7 @@ function RuleCardView({
             type="button"
             className={btnPrimary}
             disabled={confirm.isPending || needsAttention}
-            title={needsAttention ? "Edit this card first" : undefined}
+            title={needsAttention ? "Fix this card first" : undefined}
             onClick={() =>
               confirm.mutate({ ids: [card.id] }, { onError: (err) => onError(errText(err, "Couldn't confirm that rule.")) })
             }
@@ -438,7 +452,7 @@ function RuleCardView({
 export function RulesPanel({ week }: { week: WeekView }) {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showConfirmed, setShowConfirmed] = useState(() => !week.rules.some((r) => r.status === "proposed" && r.kind !== "note"));
+  const [showConfirmed, setShowConfirmed] = useState(false);
   const [showPaste, setShowPaste] = useState(false);
   const confirmAll = useActionMutation("confirm-rules");
   const notes = week.rules.filter((r) => r.kind === "note");
@@ -452,7 +466,7 @@ export function RulesPanel({ week }: { week: WeekView }) {
   const earlier = confirmed.filter((r) => !seenProposed.current.has(r.id));
   const noOf = (id: string) => week.rules.findIndex((r) => r.id === id) + 1;
 
-  const hasTickets = proposed.length > 0 || stampedNow.length > 0 || notes.length > 0 || confirmed.length > 0;
+  const hasTickets = proposed.length > 0 || stampedNow.length > 0 || notes.length > 0;
   const paste = hasTickets ? (
     <div>
       <button type="button" className="link" aria-expanded={showPaste} onClick={() => setShowPaste((v) => !v)}>
@@ -482,9 +496,16 @@ export function RulesPanel({ week }: { week: WeekView }) {
         </p>
       ) : null}
 
+      {hasTickets ? (
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="section-title">Rules to check <span className="count-pill">({proposed.length})</span></h3>
+          <h2 className="section-title" data-testid="found-heading">
+            {proposed.length + notes.length > 0
+              ? `We found ${proposed.length + notes.length} ${proposed.length + notes.length === 1 ? "thing" : "things"}. Check each one.`
+              : stampedNow.length > 0
+                ? `Done. ${stampedNow.length} ${stampedNow.length === 1 ? "rule" : "rules"} confirmed.`
+                : "Rules waiting for your check"}
+          </h2>
           {ready.length > 0 ? (
             <button
               type="button"
@@ -494,17 +515,22 @@ export function RulesPanel({ week }: { week: WeekView }) {
                 confirmAll.mutate({ all: true }, { onError: (err) => setError(errText(err, "Couldn't confirm the rules.")) })
               }
             >
-              {confirmAll.isPending ? "Confirming..." : `Confirm all (${ready.length})`}
+              {confirmAll.isPending ? "Confirming..." : `Confirm all ${ready.length}`}
             </button>
           ) : null}
         </div>
+        {proposed.length > 0 && ready.length < proposed.length ? (
+          <p className="hint mt-1" data-testid="needs-fix">
+            {ready.length} {ready.length === 1 ? "is" : "are"} ready to confirm. {proposed.length - ready.length} can't be confirmed yet: press Fix this card on {proposed.length - ready.length === 1 ? "it" : "each one"}, or Delete it.
+          </p>
+        ) : null}
         {proposed.length === 0 && stampedNow.length === 0 ? (
           confirmed.length === 0 && notes.length === 0 ? (
             <div className="mt-3">
               <EmptyRail />
             </div>
           ) : (
-            <p className="hint mt-2">Nothing waiting. Paste messages below and the rules your assistant finds will hang here for you to confirm.</p>
+            <p className="hint mt-2">Nothing is waiting. Paste more messages and the rules we find will appear here for you to check.</p>
           )
         ) : (
           <div className="rail-wrap mt-2 rail-hero">
@@ -520,9 +546,13 @@ export function RulesPanel({ week }: { week: WeekView }) {
         )}
       </div>
 
+      ) : confirmed.length === 0 ? (
+        <EmptyRail />
+      ) : null}
+
       {notes.length > 0 ? (
         <div>
-          <h3 className="section-title">Needs your eye <span className="count-pill">({notes.length})</span></h3>
+          <h3 className="section-title">Messages that aren't rules <span className="count-pill">({notes.length})</span></h3>
           <div className="rail-wrap mt-2">
             <RailBar />
             <ul aria-label="Notes that are not rules">
@@ -536,11 +566,11 @@ export function RulesPanel({ week }: { week: WeekView }) {
 
       <div>
         <button type="button" className="link" onClick={() => setShowConfirmed((v) => !v)} aria-expanded={showConfirmed}>
-          {showConfirmed ? "Hide" : "Show"} rules in use ({earlier.length})
+          {showConfirmed ? "Hide" : "Show"} the {earlier.length} {earlier.length === 1 ? "rule" : "rules"} already in use
         </button>
         {showConfirmed ? (
           earlier.length === 0 ? (
-            <p className="hint mt-2">No other confirmed rules. The week is built with the confirmed rules and the basic limits.</p>
+            <p className="hint mt-2">No other confirmed rules. Your week is built with the rules you confirm and each person's shift limit.</p>
           ) : (
             <div className="rail-wrap mt-2">
               <RailBar />
@@ -564,5 +594,28 @@ export function RulesPanel({ week }: { week: WeekView }) {
         </button>
       )}
     </div>
+  );
+}
+
+/** Step 2: paste the staff's messages, check each card, then build the week. */
+export function RulesStep({ data }: { data: WeekView }) {
+  const proposed = data.rules.filter((r) => r.status === "proposed" && r.kind !== "note").length;
+  const placed = data.slots.some((s) => s.staffId);
+  const label = placed ? "Next: Update my week" : "Next: Build my week";
+  return (
+    <StepShell
+      current="rules"
+      title="Tell us what your staff asked for"
+      lead="Paste the messages your staff sent you. We turn each one into a rule, and you confirm every one."
+      back={{ label: "Back", to: "/team" }}
+      next={
+        proposed > 0
+          ? { label, disabledReason: `Check the ${proposed} waiting ${proposed === 1 ? "message" : "messages"} first` }
+          : { label, to: "/week" }
+      }
+      {...(proposed > 0 ? { skip: { label: "Skip for now", to: "/week" } } : {})}
+    >
+      <RulesPanel week={data} />
+    </StepShell>
   );
 }

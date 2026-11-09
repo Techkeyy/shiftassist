@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import type { WeekView } from "../../../server/lib/week-view";
 import { Clip, Strike, Zig } from "./art";
-import { btnDanger, btnPrimary, btnSecondary, dayLabel, errText, shapeReason } from "./format";
+import { btnDanger, btnPrimary, btnSecondary, dayLabel, errText, shapeReason, timeWords } from "./format";
 
 type Slot = WeekView["slots"][number];
 
@@ -114,6 +114,7 @@ export function ShiftPanel({
 }) {
   const why = useActionQuery("explain-shift", { slotId: slot.id });
 
+  const [picking, setPicking] = useState(false);
   const [askState, setAskState] = useState<"idle" | "queued" | "sent" | "failed">("idle");
 
   async function deliverWhy(summary: string) {
@@ -156,7 +157,7 @@ export function ShiftPanel({
       <div className="drawer-body" data-testid="shift-panel">
         <div className="receipt" data-testid="why-panel">
           <p className="receipt-kicker">
-            {slot.label}, {dayLabel(slot.date)}, {slot.start}-{slot.end}
+            {slot.label}, {dayLabel(slot.date)}, {timeWords(slot.start, slot.end)}
           </p>
           <h3 className="receipt-lead">
             {slot.staffId ? `${slot.staffName} has this shift${slot.locked ? " (locked)" : ""} because` : "This shift is open because"}
@@ -180,8 +181,8 @@ export function ShiftPanel({
                   {mine.name}: {mine.shifts} shifts, team average {avg.toFixed(1)}
                 </p>
               ) : null}
-              <div hidden={!why.data.staffId} className="who-else">
-                <h4>Who else</h4>
+              <details hidden={!why.data.staffId} className="who-else" data-testid="who-else">
+                <summary>See who else could work it</summary>
                 {others.length === 0 ? (
                   <p className="hint">There is nobody else on your staff list.</p>
                 ) : (
@@ -216,7 +217,7 @@ export function ShiftPanel({
                     })}
                   </ul>
                 )}
-              </div>
+              </details>
             </>
           ) : null}
           <Zig />
@@ -224,17 +225,21 @@ export function ShiftPanel({
       </div>
 
       <div className="drawer-foot">
-        <div className="flex flex-wrap items-end gap-2">
+        {picking ? (
           <label className="field-label">
-            Move to...
+            Move this shift to
             <select
-              className="field mt-1 block min-w-40"
+              className="field mt-1 block"
               aria-label="Move this shift to"
               data-testid="move-to"
               value=""
               disabled={moving}
+              autoFocus
               onChange={(e) => {
-                if (e.target.value) onMove(e.target.value);
+                if (e.target.value) {
+                  onMove(e.target.value);
+                  setPicking(false);
+                }
               }}
             >
               <option value="">Choose a person</option>
@@ -246,24 +251,30 @@ export function ShiftPanel({
               ))}
             </select>
           </label>
-          {slot.staffId ? (
-            <button type="button" className={btnSecondary} disabled={moving} onClick={() => onMove(slot.staffId!, !slot.locked)}>
-              {slot.locked ? "Unlock this shift" : `Lock to ${slot.staffName}`}
-            </button>
-          ) : null}
-        </div>
-        <div className="flex flex-wrap gap-2">
+        ) : null}
+        <div className="drawer-actions">
+          <button type="button" className={btnSecondary} disabled={moving} aria-expanded={picking} onClick={() => setPicking((v) => !v)}>
+            {slot.staffId ? "Move to someone else" : "Give it to someone"}
+          </button>
           {slot.staffId ? (
             <button type="button" className={btnSecondary} onClick={onCover}>
-              Someone can't make it
+              {slot.staffName} can't make it
             </button>
           ) : null}
-          <button type="button" className={btnSecondary} onClick={askWhy} disabled={askState === "queued"} title="Your assistant explains it in plain words">
-            {askState === "queued" ? "Asking..." : "Ask the assistant why"}
-          </button>
+          {slot.staffId ? (
+            <button type="button" className={btnSecondary} disabled={moving} onClick={() => onMove(slot.staffId!, !slot.locked)}>
+              {slot.locked ? "Unlock this shift" : "Lock this shift"}
+            </button>
+          ) : null}
         </div>
-        {askState === "sent" ? <p role="status" className="hint">Sent to your assistant. Its answer is in the chat panel.</p> : null}
-        {askState === "failed" ? <p role="alert" className="problem-line">Your assistant didn't take that. Try Ask why again; the reasons above are still right.</p> : null}
+        <p className="hint">
+          Moving never breaks a rule: we stop anything that would.{" "}
+          <button type="button" className="link" onClick={askWhy} disabled={askState === "queued"}>
+            {askState === "queued" ? "Asking..." : "Ask the assistant to explain"}
+          </button>
+        </p>
+        {askState === "sent" ? <p role="status" className="hint">Sent. The assistant's answer is in the chat on the right.</p> : null}
+        {askState === "failed" ? <p role="alert" className="problem-line">The assistant didn't take that. Try again; the reasons above are still right.</p> : null}
       </div>
     </>
   );

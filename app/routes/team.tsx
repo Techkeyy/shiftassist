@@ -1,11 +1,11 @@
-import { Navigate } from "react-router";
-
+import { TeamStep } from "@/components/board/TeamStep";
+import { WeekLoader } from "@/components/board/StepShell";
 import { APP_TITLE } from "@/lib/app-config";
 
 export function meta() {
-  return [{ title: `Team — ${APP_TITLE}` }];
+  return [{ title: `Team | ${APP_TITLE}` }];
 }
 
-export default function TeamRoute() {
-  return <Navigate to="/settings/organization" replace />;
+export default function Route() {
+  return <WeekLoader current="team" allowEmpty={true}>{(w) => <TeamStep data={w} />}</WeekLoader>;
 }

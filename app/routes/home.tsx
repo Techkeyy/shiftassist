@@ -1,16 +1,10 @@
-import { redirect } from "react-router";
-
+import { Home } from "@/components/board/Home";
 import { APP_TITLE } from "@/lib/app-config";
 
 export function meta() {
-  return [{ title: APP_TITLE }];
-}
-
-// ShiftAssist has no Get started page: signed-in users land on the week.
-export function loader() {
-  return redirect("/board");
+  return [{ title: `Home | ${APP_TITLE}` }];
 }
 
 export default function HomeRoute() {
-  return null;
+  return <Home />;
 }

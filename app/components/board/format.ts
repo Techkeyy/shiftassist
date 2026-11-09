@@ -121,3 +121,52 @@ export function shapeReason(name: string, sentence: string): { text: string; exa
   }
   return { text: sentence, exact: true };
 }
+
+function clock12(t: string): { h: number; m: number; pm: boolean } {
+  const [h, m] = t.split(":").map(Number) as [number, number];
+  return { h: h % 12 === 0 ? 12 : h % 12, m, pm: h % 24 >= 12 };
+}
+const clockPart = (c: { h: number; m: number }) => (c.m === 0 ? String(c.h) : `${c.h}:${String(c.m).padStart(2, "0")}`);
+
+/** A slip's time in everyday words: "10-4", "5-11", "11:30-4". Always short; the sentence form is timeWords. */
+export function plainTime(start: string, end: string): string {
+  return `${clockPart(clock12(start))}-${clockPart(clock12(end))}`;
+}
+
+/** "10am to 4pm", for sentences. */
+export function timeWords(start: string, end: string): string {
+  const a = clock12(start);
+  const b = clock12(end);
+  const ap = (c: typeof a) => `${clockPart(c)}${c.pm ? "pm" : "am"}`;
+  return `${ap(a)} to ${ap(b)}`;
+}
+
+/** Joins names as "Sam, Priya and Maya". */
+export function joinNames(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+/** "everyone has 2 or 3", or the names at the two ends when the spread is wider than one. Null when there is no data. */
+function spread(people: { name: string; n: number }[], noun: string): { even: boolean; text: string } | null {
+  if (people.length === 0) return null;
+  const sorted = [...people].sort((a, b) => a.n - b.n);
+  const lo = sorted[0]!;
+  const hi = sorted[sorted.length - 1]!;
+  if (hi.n - lo.n <= 1) {
+    return { even: true, text: `${noun}: everyone has ${lo.n === hi.n ? lo.n : `${lo.n} or ${hi.n}`}.` };
+  }
+  return { even: false, text: `${noun}: ${hi.name} has ${hi.n}, ${lo.name} has ${lo.n}.` };
+}
+
+/** One true sentence about fairness, from the scheduler's own counts. Null before anything is placed. */
+export function fairnessSummary(
+  people: { name: string; closes: number; weekends: number }[] | undefined,
+): { even: boolean; text: string } | null {
+  if (!people || people.length === 0) return null;
+  const c = spread(people.map((p) => ({ name: p.name, n: p.closes })), "Closing shifts");
+  const w = spread(people.map((p) => ({ name: p.name, n: p.weekends })), "Weekend shifts");
+  if (!c || !w) return null;
+  const even = c.even && w.even;
+  return { even, text: `${even ? "Shared fairly." : "Not even yet."} ${c.text} ${w.text}` };
+}

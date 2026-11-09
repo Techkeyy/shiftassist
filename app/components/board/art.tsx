@@ -39,11 +39,12 @@ export function Clip({ closed = true, className, height = 22 }: { closed?: boole
   );
 }
 
-/** Pin icon for a locked shift. */
+/** Padlock icon for a locked shift. */
 export function Pin({ className }: { className?: string }) {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" className={className} aria-hidden="true">
-      <path d="M4.5 1.5h5l-.7 4 2 2.2H2.7l2-2.2zM7 7.7v5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+      <rect x="2.5" y="6" width="9" height="6.5" rx="1" fill="currentColor" />
+      <path d="M4.5 6V4.5a2.5 2.5 0 0 1 5 0V6" fill="none" stroke="currentColor" strokeWidth="1.5" />
     </svg>
   );
 }

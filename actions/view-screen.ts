@@ -23,10 +23,10 @@ export default defineAction({
 
     const view = (navigation as { view?: string } | null)?.view;
     const owner = ctx?.userEmail;
-    if (view === "board" && owner) {
+    if ((view === "board" || view === "team" || view === "rules" || view === "week" || view === "share" || view === "home") && owner) {
       const w = await buildWeekView(owner);
       if (!w.hasWeek) {
-        screen.board = { hasWeek: false, hint: "No week yet. The user can try the sample restaurant or set up their own restaurant on the Week page." };
+        screen.board = { hasWeek: false, hint: "No week yet. The user can try the sample restaurant or set up their own restaurant on the Home page." };
       } else {
         const perPerson: Record<string, string[]> = {};
         for (const s of w.slots) {
