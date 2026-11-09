@@ -172,6 +172,7 @@ input{width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--rule-st
 <div>
 <h1 id="h1">Your staff's texts in. A fair week out.</h1>
 <p class="lead">For the manager of a small restaurant. Paste the messages your team sends you, and ShiftAssist builds the week around them and tells you why each shift went to each person.</p>
+<p class="lead">It also works for any small team that works shifts, such as cafés, clinics and shops.</p>
 <div class="ctas"><a class="btn main" href="#start" id="cta">Get started</a><a class="btn ghost" href="#how">See how it works</a></div>
 </div>
 <figure class="scene" aria-label="Example: three staff messages become tickets on a rail, one is stamped, then shifts fill a small sheet">

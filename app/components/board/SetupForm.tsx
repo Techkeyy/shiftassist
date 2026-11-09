@@ -7,7 +7,8 @@ import { btnDanger, btnPrimary, btnSecondary, errText, inputCls, nextMonday } fr
 interface StaffRow {
   id?: string;
   name: string;
-  roles: string;
+  roles: string[];
+  own: string;
   maxShifts: string;
   hourlyRate: string;
   overtimeAfterHours: string;
@@ -32,7 +33,10 @@ const DAYS: [string, number][] = [
   ["Sun", 0],
 ];
 
-const blankStaff = (): StaffRow => ({ name: "", roles: "", maxShifts: "5", hourlyRate: "", overtimeAfterHours: "" });
+const SUGGESTED_ROLES = ["cook", "server", "bar", "host", "kitchen porter", "manager"];
+const cleanRole = (r: string) => r.trim().toLowerCase().replace(/\s+/g, " ");
+
+const blankStaff = (): StaffRow => ({ name: "", roles: [], own: "", maxShifts: "5", hourlyRate: "", overtimeAfterHours: "" });
 const blankPattern = (): PatternRow => ({
   name: "",
   role: "",
@@ -64,7 +68,8 @@ export function SetupForm({
       ? existing.staff.map((s) => ({
           id: s.id,
           name: s.name,
-          roles: s.roles.join(", "),
+          roles: [...new Set(s.roles.flatMap((r) => r.split(",")).map(cleanRole).filter(Boolean))],
+          own: "",
           maxShifts: String(s.maxShifts),
           hourlyRate: s.hourlyRate === null ? "" : String(s.hourlyRate),
           overtimeAfterHours: s.overtimeAfterHours === null ? "" : String(s.overtimeAfterHours),
@@ -75,7 +80,7 @@ export function SetupForm({
     editing && existing?.setup
       ? existing.setup.pattern.map((p) => ({
           name: p.name,
-          role: p.role,
+          role: cleanRole(p.role),
           start: p.start,
           end: p.end,
           days: p.days,
@@ -95,16 +100,39 @@ export function SetupForm({
     setPattern((rows) => rows.map((r, k) => (k === i ? { ...r, ...patch } : r)));
   }
 
+  function toggleRole(i: number, role: string) {
+    setStaff((rows) =>
+      rows.map((r, k) => (k !== i ? r : { ...r, roles: r.roles.includes(role) ? r.roles.filter((x) => x !== role) : [...r.roles, role] })),
+    );
+  }
+  function addOwnRole(i: number) {
+    const role = cleanRole(staff[i]?.own ?? "").replace(/,/g, "");
+    if (!role) return;
+    setStaff((rows) => rows.map((r, k) => (k !== i ? r : { ...r, roles: r.roles.includes(role) ? r.roles : [...r.roles, role], own: "" })));
+  }
+
+  // Jobs somebody on the team has; a shift can only ask for one of these.
+  const teamRoles = [...new Set(staff.flatMap((s) => s.roles))];
+  const unworkable = pattern
+    .map((p, i) => ({ p, i }))
+    .filter(({ p }) => p.name.trim() && (!p.role || !teamRoles.includes(p.role)))
+    .map(({ p }) =>
+      p.role
+        ? `"${p.name.trim()}" needs a ${p.role}, but nobody on your team has that job.`
+        : `"${p.name.trim()}" has no job chosen yet.`,
+    );
+
   function submit(confirmReplace: boolean) {
     setProblem(null);
     for (const [i, s] of staff.entries()) {
       if (!s.name.trim()) return setProblem(`Person ${i + 1} needs a name.`);
-      if (!s.roles.split(",").some((r) => r.trim())) return setProblem(`${s.name} needs at least one job, like cook or server.`);
+      if (s.roles.length === 0) return setProblem(`${s.name} needs at least one job, like cook or server.`);
       if (!Number.isInteger(Number(s.maxShifts)) || s.maxShifts === "") return setProblem(`${s.name}: max shifts must be a whole number.`);
     }
     for (const [i, p] of pattern.entries()) {
       if (!p.name.trim()) return setProblem(`Shift ${i + 1} needs a name.`);
-      if (!p.role.trim()) return setProblem(`"${p.name}" needs a job.`);
+      if (!p.role) return setProblem(`"${p.name}" needs a job. Pick one from the list.`);
+      if (!teamRoles.includes(p.role)) return setProblem(`"${p.name}" needs a ${p.role}, but nobody on your team has that job. Give someone that job first.`);
       if (p.days.length === 0) return setProblem(`"${p.name}" needs at least one day.`);
       if (p.start === p.end) return setProblem(`"${p.name}" starts and ends at the same time.`);
     }
@@ -114,14 +142,14 @@ export function SetupForm({
         staff: staff.map((s) => ({
           ...(s.id ? { id: s.id } : {}),
           name: s.name.trim(),
-          roles: s.roles.split(",").map((r) => r.trim().toLowerCase()).filter(Boolean),
+          roles: s.roles,
           maxShifts: Number(s.maxShifts),
           ...(s.hourlyRate.trim() ? { hourlyRate: Math.round(Number(s.hourlyRate)) } : {}),
           ...(s.overtimeAfterHours.trim() ? { overtimeAfterHours: Math.round(Number(s.overtimeAfterHours)) } : {}),
         })),
         pattern: pattern.map((p) => ({
           name: p.name.trim(),
-          role: p.role.trim().toLowerCase(),
+          role: p.role,
           start: p.start,
           end: p.end,
           days: p.days,
@@ -166,10 +194,41 @@ export function SetupForm({
               Name
               <input className={inputCls} value={s.name} onChange={(e) => patchStaff(i, { name: e.target.value })} aria-label={`Person ${i + 1} name`} />
             </label>
-            <label className="setup-field">
-              Jobs they can do
-              <input className={inputCls} placeholder="cook, server" value={s.roles} onChange={(e) => patchStaff(i, { roles: e.target.value })} aria-label={`Person ${i + 1} roles`} />
-            </label>
+            <fieldset className="setup-field">
+              <legend>Jobs they can do</legend>
+              <div className="mt-1 flex flex-wrap gap-2" data-testid="role-chips">
+                {[...new Set([...SUGGESTED_ROLES, ...s.roles])].map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    className={`btn ${s.roles.includes(r) ? "btn-primary" : "btn-secondary"}`}
+                    aria-pressed={s.roles.includes(r)}
+                    aria-label={`Person ${i + 1} job ${r}`}
+                    onClick={() => toggleRole(i, r)}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-2 flex gap-2">
+                <input
+                  className={inputCls}
+                  placeholder="Add your own job"
+                  value={s.own}
+                  onChange={(e) => patchStaff(i, { own: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addOwnRole(i);
+                    }
+                  }}
+                  aria-label={`Person ${i + 1} add your own job`}
+                />
+                <button type="button" className={btnSecondary} onClick={() => addOwnRole(i)} aria-label={`Person ${i + 1} add job`}>
+                  Add
+                </button>
+              </div>
+            </fieldset>
             <label className="setup-field">
               Most shifts a week
               <input className={inputCls} inputMode="numeric" value={s.maxShifts} onChange={(e) => patchStaff(i, { maxShifts: e.target.value })} aria-label={`Person ${i + 1} max shifts`} />
@@ -214,8 +273,15 @@ export function SetupForm({
             </label>
             <label className="setup-field sm:col-span-2">
               Job needed
-              <input className={inputCls} placeholder="server" value={p.role} onChange={(e) => patchPattern(i, { role: e.target.value })} aria-label={`Shift ${i + 1} role`} />
-            </label>
+              <select className={inputCls} value={p.role} onChange={(e) => patchPattern(i, { role: e.target.value })} aria-label={`Shift ${i + 1} role`}>
+                <option value="">{teamRoles.length ? "Pick a job" : "Give someone a job first"}</option>
+                {teamRoles.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+              </label>
             <label className="setup-field">
               Start
               <input type="time" className={inputCls} value={p.start} onChange={(e) => patchPattern(i, { start: e.target.value })} aria-label={`Shift ${i + 1} start`} />
@@ -259,6 +325,17 @@ export function SetupForm({
           Add another shift
         </button>
       </section>
+
+      {unworkable.length ? (
+        <div role="status" className="problem-line !flex-col !items-start" data-testid="unworkable-warning">
+          <p>These shifts can't be filled as things stand:</p>
+          <ul className="list-disc pl-5">
+            {unworkable.map((u) => (
+              <li key={u}>{u}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {problem ? (
         <p role="alert" className="problem-line">

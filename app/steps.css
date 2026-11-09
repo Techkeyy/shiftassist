@@ -163,7 +163,12 @@ a.btn {
 }
 .step-work .board-sheet > .sheet {
   overflow-x: auto;
-  overflow-y: visible;
+  /* clip, not visible: "visible" turns into "auto" next to overflow-x, which made the sheet its own
+     vertical scroller and let the sticky header cover the first row. The page scrolls instead. */
+  overflow-y: clip;
+}
+.step-work .rota thead th {
+  position: static;
 }
 .week-tools {
   display: flex;

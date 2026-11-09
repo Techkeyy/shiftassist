@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { getDb } from "../db/index.js";
 import { assignments, rules, slots, staff, weeks } from "../db/schema.js";
-import { refuse } from "./assignments.js";
+import { normRole, normRoles, refuse } from "./assignments.js";
 
 export const MAX_STAFF = 60;
 export const MAX_PATTERN_LINES = 30;
@@ -58,7 +58,7 @@ export interface SetupResult {
 export function patternKey(weekStart: string, pattern: PatternInput[]): string {
   return JSON.stringify({
     weekStart,
-    pattern: pattern.map((p) => ({ ...p, role: p.role.toLowerCase(), days: [...new Set(p.days)].sort() })),
+    pattern: pattern.map((p) => ({ ...p, role: normRole(p.role), days: [...new Set(p.days)].sort() })),
   });
 }
 
@@ -86,6 +86,24 @@ export async function saveSetup(
   for (const p of input.pattern) {
     if (p.start === p.end) refuse(`"${p.name}" starts and ends at the same time.`, "bad_time");
   }
+  // Roles are stored trimmed, lower case and with single spaces, so "Server " on a person matches "server" on a shift.
+  input = {
+    ...input,
+    staff: input.staff.map((s) => ({ ...s, roles: normRoles(s.roles) })),
+    pattern: input.pattern.map((p) => ({ ...p, role: normRole(p.role) })),
+  };
+  for (const s of input.staff) {
+    if (s.roles.length === 0) refuse(`${s.name} needs at least one job, like cook or server.`, "no_roles");
+  }
+  const teamRoles = new Set(input.staff.flatMap((s) => s.roles));
+  for (const p of input.pattern) {
+    if (!teamRoles.has(p.role)) {
+      refuse(
+        `"${p.name}" needs a ${p.role} but nobody on your team has that job. Give someone that job, or pick a job your team has.`,
+        "role_nobody_has",
+      );
+    }
+  }
   const names = input.staff.map((s) => s.name.toLowerCase());
   if (new Set(names).size !== names.length) {
     refuse("Two people have the same name. Give each person a different name.", "duplicate_name");
@@ -109,7 +127,7 @@ export async function saveSetup(
           date,
           start: p.start,
           end: p.end,
-          role: p.role.toLowerCase(),
+          role: p.role,
           label: p.name,
         });
       }
@@ -118,10 +136,7 @@ export async function saveSetup(
   if (newSlots.length === 0) refuse("Those days produce no shifts.", "no_slots");
   if (newSlots.length > MAX_SLOTS) refuse(`That makes ${newSlots.length} shifts; the limit is ${MAX_SLOTS}.`, "too_many");
 
-  const roleSet = new Set(input.staff.flatMap((s) => s.roles.map((r) => r.toLowerCase())));
-  const warnings = [...new Set(input.pattern.map((p) => p.role.toLowerCase()))]
-    .filter((r) => !roleSet.has(r))
-    .map((r) => `Nobody on your staff has the "${r}" role, so those shifts can't be filled.`);
+  const warnings: string[] = [];
 
   return getDb().transaction(async (tx) => {
     const [week] = await tx.select().from(weeks).where(eq(weeks.ownerEmail, owner)).for("update");
@@ -131,7 +146,7 @@ export async function saveSetup(
       id,
       ownerEmail: owner,
       name: s.name,
-      roles: JSON.stringify(s.roles.map((r) => r.toLowerCase())),
+      roles: JSON.stringify(s.roles),
       maxShifts: s.maxShifts,
       hourlyRate: s.hourlyRate ?? null,
       overtimeAfterHours: s.overtimeAfterHours ?? null,
@@ -204,7 +219,7 @@ export async function saveSetup(
           .update(staff)
           .set({
             name: s.name,
-            roles: JSON.stringify(s.roles.map((r) => r.toLowerCase())),
+            roles: JSON.stringify(s.roles),
             maxShifts: s.maxShifts,
             hourlyRate: s.hourlyRate ?? null,
             overtimeAfterHours: s.overtimeAfterHours ?? null,

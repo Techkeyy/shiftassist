@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { getDb } from "../db/index.js";
 import { staff as staffTable } from "../db/schema.js";
-import { currentFairness, describeSlot, loadSchedule, loadWeekRow, type LastChange } from "./assignments.js";
+import { currentFairness, describeSlot, loadSchedule, loadWeekRow, normRole, type LastChange } from "./assignments.js";
 import { listRuleCards, type RuleCard } from "./rules.js";
 import { SAMPLE_MESSAGES } from "./sample.js";
 import type { PatternInput } from "./setup.js";
@@ -112,7 +112,7 @@ export async function buildWeekView(owner: string): Promise<WeekView> {
   if (week.pattern) {
     try {
       const p = JSON.parse(week.pattern) as { weekStart: string; pattern: PatternInput[] };
-      setup = { weekStart: p.weekStart, pattern: p.pattern };
+      setup = { weekStart: p.weekStart, pattern: p.pattern.map((x) => ({ ...x, role: normRole(x.role) })) };
     } catch {
       setup = null;
     }

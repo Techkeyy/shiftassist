@@ -471,3 +471,40 @@ describe("setup", () => {
     expect((await buildWeekView(o)).slots).toHaveLength(3);
   });
 });
+
+describe("role normalisation", () => {
+  const one = (role: string) => ({ name: "Dinner", role, start: "17:00", end: "23:00", days: [1, 2], count: 1 });
+
+  it("stores trimmed, lower case roles, so 'Server ' on staff matches 'server' on a shift", async () => {
+    const o = "roles1@example.test";
+    const r = await saveSetup(o, { weekStart: START, staff: [{ name: "Una", roles: ["Server "], maxShifts: 5 }], pattern: [one("server")] });
+    expect(r.created).toBe(true);
+    const [row] = await getDb().select().from(staff).where(eq(staff.ownerEmail, o));
+    expect(JSON.parse(row!.roles)).toEqual(["server"]);
+    await buildWeek(o);
+    expect((await buildWeekView(o)).slots.every((s) => s.staffId)).toBe(true);
+    // Messy spacing, case and a comma list on staff all normalise.
+    const o2 = "roles2@example.test";
+    await saveSetup(o2, { weekStart: START, staff: [{ name: "Una", roles: ["  Kitchen   Porter, COOK"], maxShifts: 5 }], pattern: [one("Kitchen  porter ")] });
+    const [row2] = await getDb().select().from(staff).where(eq(staff.ownerEmail, o2));
+    expect(JSON.parse(row2!.roles)).toEqual(["kitchen porter", "cook"]);
+  });
+
+  it("refuses a shift whose role nobody on the team has", async () => {
+    const o = "roles3@example.test";
+    await expect(
+      saveSetup(o, { weekStart: START, staff: [{ name: "Una", roles: ["cook"], maxShifts: 5 }], pattern: [one("cook, server")] }),
+    ).rejects.toThrow(/nobody on your team has that job/);
+    expect((await buildWeekView(o)).hasWeek).toBe(false);
+  });
+
+  it("normalises roles already stored by older saves when loading", async () => {
+    const o = "roles4@example.test";
+    await saveSetup(o, { weekStart: START, staff: [{ name: "Una", roles: ["server"], maxShifts: 5 }], pattern: [one("server")] });
+    await getDb().update(staff).set({ roles: JSON.stringify(["Server "]) }).where(eq(staff.ownerEmail, o));
+    const { input } = await loadSchedule(getDb(), o);
+    expect(input.staff[0]!.roles).toEqual(["server"]);
+    await buildWeek(o);
+    expect((await buildWeekView(o)).slots.every((s) => s.staffId)).toBe(true);
+  });
+});

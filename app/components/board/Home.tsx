@@ -23,7 +23,7 @@ function NewAccount() {
     <div className="step-body">
       <div className="step-inner home-inner">
         <h1 className="display step-title">Let's build your first week.</h1>
-        <p className="step-lead">It takes about a minute with the sample. Pick how you want to start.</p>
+        <p className="step-lead">It takes about a minute with the sample. Pick how you want to start. Restaurants are our main example, but it also works for any small team that works shifts, such as cafés, clinics and shops.</p>
         <div className="choice-grid">
           <div className="choice">
             <h2 className="display">Try it first</h2>

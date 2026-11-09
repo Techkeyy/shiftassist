@@ -119,6 +119,16 @@ export async function loadWeekRow(
  * Everything one owner has, in the shapes the solver expects. Always filtered by owner.
  * Only CONFIRMED rules are loaded: a proposed rule never reaches the solver or any rule check.
  */
+/** One role in its stored form: trimmed, lower case, inner spaces collapsed. */
+export function normRole(r: string): string {
+  return r.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/** A list of roles, normalised, split on commas, without blanks or repeats. */
+export function normRoles(roles: string[]): string[] {
+  return [...new Set(roles.flatMap((r) => r.split(",")).map(normRole).filter(Boolean))];
+}
+
 export async function loadSchedule(
   db: DbLike,
   owner: string,
@@ -135,7 +145,7 @@ export async function loadSchedule(
   const staffList: Staff[] = staffRows.map((r) => ({
     id: r.id,
     name: r.name,
-    roles: JSON.parse(r.roles) as string[],
+    roles: normRoles(JSON.parse(r.roles) as string[]),
     maxShifts: r.maxShifts,
     ...(r.hourlyRate !== null ? { hourlyRate: r.hourlyRate } : {}),
     ...(r.overtimeAfterHours !== null
@@ -147,7 +157,7 @@ export async function loadSchedule(
     date: r.date,
     start: r.start,
     end: r.end,
-    role: r.role,
+    role: normRole(r.role),
     ...(r.label ? { label: r.label } : {}),
   }));
   // Notes and unclear cards are not rules. Even if one were ever marked confirmed, it is skipped here.
