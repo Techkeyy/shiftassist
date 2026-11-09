@@ -42,4 +42,11 @@ learnings.md
 .agent-native/
 data/*.lock
 
-.vercel
+# Working notes and local tooling, kept out of the public repo
+director.md
+agent-native-idea-research.md
+docs/demo-script.md
+docs/design-brief.md
+docs/ux-brief.md
+.claude/launch.json
+.mcp.json

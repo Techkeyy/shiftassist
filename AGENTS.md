@@ -1,6 +1,6 @@
-# Chat — Agent Guide
+# ShiftAssist: Agent Guide
 
-Chat is the minimal chat-first agent-native app. `/` redirects to shared sign-in, then `/home`, the editable Get started page. Chat lives at `/chat`; new chats start there. Actions carry capabilities; screens exist only for durable workflows.
+ShiftAssist is a staff rota app for small restaurants and other shift teams. Signed-out visitors see the product page at `/`; signed-in managers land on Home (`/home`) and work through four steps. The assistant reads staff messages and helps; the scheduling code places every shift. See the ShiftAssist section below for routes, actions and rules.
 
 ## Skills
 
@@ -19,14 +19,12 @@ For custom branding, keep `server/plugins/agent-native-email-branding.ts` aligne
 
 ## Application state
 
-- `navigation` describes the view and selected ids. Chat is `chat` at `/chat` and `/chat/<threadId>`; Home is `home` at `/home`; `/` opens shared sign-in/signup.
+- `navigation` describes the view and selected ids. Home is `home` at `/home`; the steps are `team`, `rules`, `week` and `share`; full-page chat is `chat` at `/chat`; `/` is the signed-out product page.
 - Use `navigate` when supported and `view-screen` for a fresh read of visible details; basic navigation is already in `<current-screen>`.
 
-## Building a domain app
+## Changing the app
 
-Choose the primary workflow and route before editing. Add a domain route under `app/routes/` and set `app.homePath` in `server/plugins/agent-native-email-branding.ts` with `defineAppConfig`. The default Get started page lives at `/home`, and Chat stays at `/chat`; edit `app/routes/home.tsx` when replacing that page with a domain-specific home. Add a static link in `app/components/layout/Sidebar.tsx` before `ChatThreadsSection`; `Header.tsx` uses `APP_TITLE` elsewhere. Shared sidebar and AgentInspector remain.
-
-Use `adding-a-feature` for functional parity and `frontend-design` for a user-facing screen. Keep feature guidance here; do not rewrite `README.md` or `DESIGN.md`. After all edits, run one typecheck, one doctor check, and one browser smoke of the primary workflow, including overlap rejection, cancellation freeing the slot, and authenticated landing. Skip production build and extra test suites.
+Use `adding-a-feature` for functional parity and `frontend-design` for a user-facing screen. The guided steps live in `app/routes/` (`home`, `team`, `rules`, `week`, `share`) with components in `app/components/board/`; `app.homePath` is `/home` in `server/plugins/agent-native-email-branding.ts`. After edits, run `pnpm exec vitest run`, one typecheck, one doctor check, and one browser pass of the journey.
 
 Before building common workspace or agent UI, read `agent-native-toolkit`; for supported customization, read `customizing-agent-native`.
 

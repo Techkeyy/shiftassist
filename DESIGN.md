@@ -1,38 +1,26 @@
-# Visual Design Contract
+# ShiftAssist design
 
-Chat is a quiet, full-canvas conversation workbench. AgentKit owns the
-conversation primitives; the template owns the surrounding navigation and
-workspace chrome.
+## Who it's for
 
-## Product mode
+A busy restaurant manager who builds the rota once a week, often tired and often on a phone, and staff who open their week from a link. The interface has to answer three questions at every moment: where am I, what is this, what do I do next.
 
-- Mode: `operate`
-- Audience and cadence: frequent users managing many ongoing agent threads.
-- Primary workflow: begin, resume, pin, and organize conversations without
-  leaving the chat canvas.
+## Structure
 
-## Visual direction
+- **Product page (`/`)** explains the problem and the four steps, and includes a small interactive example that needs no account.
+- **Home (`/home`)** shows one next step derived from real state, the four steps with plain status, and "Someone called in sick?".
+- **Four guided steps:** Team, Rules, Week, Share. Each has its own URL, one heading, one sentence of instruction, and a fixed footer with Back and a single "Next" button that says what comes next.
+- **The assistant** is optional and closed by default. Reading messages shows progress on the Rules page itself.
 
-- Direction name: Quiet conversation library
-- Palette family: neutral ink and semantic surfaces; active rows use the
-  existing sidebar accent rather than a separate branded color.
-- Type treatment: dense sans-serif labels with regular-weight conversation
-  titles and restrained section labels.
-- Composition: a persistent conversation library beside a generous chat
-  canvas. New chat is the primary rail action, followed by Pinned and Recents.
-  Account, workspace, settings, and sign-out controls disclose from one footer
-  row instead of competing in the rail.
-- Shape language: borderless lists, soft selected rows, quiet corners, and
-  compact icon controls.
-- Anti-references: icon-only navigation as the default state, floating chips,
-  duplicated settings links, timestamps competing with thread titles, and
-  placeholder destinations that the app does not implement.
+## Visual language: "The Pass"
 
-## Guardrails
+A restaurant runs on paper tickets clipped to a rail at the pass. ShiftAssist borrows that, and nothing more:
 
-- Preserve the scaffold's semantic tokens and shared component seams.
-- Keep domain pages distinct from full-page chat and use the AgentSidebar for
-  contextual AI.
-- Compare sibling apps before reusing their palette or composition.
-- Keep pinning, rename, archive, and routing wired to the shared chat thread
-  model; the sidebar is a presentation layer, not a second history store.
+- Staff messages arrive as **tickets** on a rail, quoting the staff member's own words, with the plain rule underneath. Confirming one **stamps** it.
+- The week is a **ruled sheet**, with Lunch and Dinner bands so a week reads across like a real rota.
+- Clicking a shift prints a **receipt** with a torn edge: why that person has it, and who else could have worked it.
+
+Paper `#F7F2E8` and ink `#1F2A2B` in light mode, with a blue-black dark mode. Colour has jobs: yellow for "just changed" and the current step, blue for locked, tomato for problems, green for confirmed. Status is never shown by colour alone. Type is Zilla Slab for headings, Familjen Grotesk for interface text, and IBM Plex Mono for times and receipts only. No gradients, glows or decorative badges.
+
+## Truth rules
+
+Everything shown in the app comes from real state. Illustrations and the product page's interactive example are labelled "Example". ShiftAssist never claims to send a message: the button says "Copy message".
